@@ -2,7 +2,7 @@ import pandas as pd
 from .models import Alumno, Curso, CustomUser
 from io import BytesIO
 
-def create_alumnos_from_xls(file):
+def create_alumnos_from_xls(file, curso_data):
     try:
         # Read the file content into a BytesIO object
         file_content = BytesIO(file.read())
@@ -27,16 +27,20 @@ def create_alumnos_from_xls(file):
     except Exception as e:
         raise ValueError(f"Error reading the Excel file: {e}")
 
+    # Create or get the curso
+    curso, created = Curso.objects.get_or_create(
+        asignatura=curso_data['asignatura'],
+        anio=curso_data['anio'],
+        semestre=curso_data['semestre'],
+        grupo=curso_data['grupo']
+    )
+
     created_alumnos = []
     existing_alumnos = []
-    curso_name = None
-    curso_created = False
 
     for _, row in df.iterrows():
-        curso_name = row['CARRERA']
-        curso, created = Curso.objects.get_or_create(asignatura=curso_name, anio=2024, semestre=True, grupo='A')
-        if created:
-            curso_created = True
+        # Generar una contraseña inicial basada en el RUT
+        initial_password = f"{row['RUT']}123"  # Se puede cambiar esta lógica
         
         user, created = CustomUser.objects.get_or_create(
             username=row['RUT'],
@@ -44,9 +48,14 @@ def create_alumnos_from_xls(file):
                 'email': row['EMAIL'],
                 'is_profesor': False,
                 'is_alumno': True,
-                'password': 'defaultpassword'  # Set a default password or handle password setting securely
             }
         )
+        
+        # Establecer la contraseña solo si el usuario es nuevo
+        if created:
+            user.set_password(initial_password)
+            user.save()
+            print(f"Created user {user.username} with password {initial_password}")
         
         alumno, created = Alumno.objects.get_or_create(
             user=user,
@@ -57,13 +66,18 @@ def create_alumnos_from_xls(file):
         alumno.curso.add(curso)
         
         if created:
-            created_alumnos.append(alumno.name)
+            created_alumnos.append({
+                'name': alumno.name,
+                'username': user.username,
+                'password': initial_password if created else 'already_exists'
+            })
         else:
             existing_alumnos.append(alumno.name)
 
     return {
-        "curso": curso_name,
-        "curso_created": curso_created,
+        "curso": curso,  # Retorna el objeto curso en lugar de serializarlo
+        "curso_created": created,
         "created_alumnos": created_alumnos,
         "existing_alumnos": existing_alumnos
     }
+

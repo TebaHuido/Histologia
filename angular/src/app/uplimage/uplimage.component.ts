@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
 
@@ -46,29 +46,28 @@ export class UplimageComponent implements OnInit {
   }
 
   loadTinciones() {
-    const headers = this.authService.getAuthHeaders();
-    this.http.get('http://localhost:8000/api/tinciones/', { headers }).subscribe((data: any) => {
+    this.http.get('http://localhost:8000/api/tinciones/').subscribe((data: any) => {
       this.tinciones = data;
     });
   }
   
   loadCategories() {
     const headers = this.authService.getAuthHeaders();
-    this.http.get('http://localhost:8000/api/categorias/', { headers }).subscribe((data: any) => {
+    this.http.get('http://localhost:8000/api/categorias/', { headers, withCredentials: true }).subscribe((data: any) => {
       this.categories = data;
     });
   }
 
   loadOrganos() {
     const headers = this.authService.getAuthHeaders();
-    this.http.get('http://localhost:8000/api/organos/', { headers }).subscribe((data: any) => {
+    this.http.get('http://localhost:8000/api/organos/', { headers, withCredentials: true }).subscribe((data: any) => {
       this.organos = data;
     });
   }
 
   loadSistemas() {
     const headers = this.authService.getAuthHeaders();
-    this.http.get('http://localhost:8000/api/sistemas/', { headers }).subscribe((data: any) => {
+    this.http.get('http://localhost:8000/api/sistemas/', { headers, withCredentials: true }).subscribe((data: any) => {
       this.sistemas = data;
     });
   }
@@ -149,10 +148,8 @@ export class UplimageComponent implements OnInit {
       formData.append('sistema', newSistema);
     } else if (selectedSistema) {
       formData.append('sistema', selectedSistema);
-    } else {
-      formData.append('sistema', 'null');
     }
-    
+  
     // Tinciones
     const selectedTincion = this.sampleForm.get('tincion')?.value;
     const newTincion = this.sampleForm.get('newTincion')?.value;

@@ -1,39 +1,38 @@
-<div #imageContainer class="image-container"
-     (wheel)="onWheel($event)"
+<div class="image-container"
+     #imageContainer
      (mousedown)="onMouseDown($event)"
      (mousemove)="onMouseMove($event)"
      (mouseup)="onMouseUp()"
-     (mouseleave)="onMouseUp()">
+     (mouseleave)="onMouseUp()"
+     (wheel)="onWheel($event)"
+     (click)="handleClick($event)">
+  <div class="button-container">
+    <div class="zoom-buttons">
+      <button class="zoom-button" (click)="$event.stopPropagation(); zoomIn()">+</button>
+      <button class="zoom-button" (click)="$event.stopPropagation(); zoomOut()">-</button>
+    </div>
+    <div class="other-buttons">
+      <button (click)="$event.stopPropagation(); resetZoom()">Reset</button>
+    </div>
+  </div>
+
   <img #imageElement [src]="imageUrl"
-       [style.transform]="'translate(' + (-offsetX) + 'px,' + (-offsetY) + 'px) scale(' + scale + ')'"
+       [style.transform]="'translate(' + offsetX + 'px,' + offsetY + 'px) scale(' + scale + ')'"
        [style.transform-origin]="'0 0'"
        (click)="onImageClick($event)"
        draggable="false"
        alt="Imagen con zoom">
 
-  <!-- Botones de zoom (en su propio contenedor) -->
-  <div class="button-container">
-    <div class="zoom-buttons">
-      <button *ngIf="!isTaggingMode" class="zoom-button" (click)="zoomIn()">+</button>
-      <button *ngIf="!isTaggingMode" class="zoom-button" (click)="zoomOut()">-</button>
-    </div>
-
-    <!-- Otros botones (en su propio contenedor) -->
-    <div class="other-buttons">
-      <button (click)="toggleTaggingMode()">
-        {{ isTaggingMode ? 'Salir de etiquetado' : 'Activar etiquetado' }}
-      </button>
-      <button (click)="toggleLabelsVisibility()">
-        {{ showLabels ? 'Ocultar etiquetas' : 'Mostrar etiquetas' }}
-      </button>
-    </div>
-  </div>
-
-  <!-- Mostrar etiquetas en la imagen -->
+  <!-- Etiquetas existentes y temporales -->
   <ng-container *ngIf="showLabels">
     <div *ngFor="let label of labels"
          class="label-marker"
-         [style.transform]="'translate(' + (label.x * scale - offsetX) + 'px, ' + (label.y * scale - offsetY) + 'px)'">
+         [class.temporary]="label.isTemporary"
+         [class.highlighted]="label.highlighted"
+         [class.public]="label.public"
+         [style.left]="(label.coordenadas.x * scale + offsetX - 5) + 'px'"
+         [style.top]="(label.coordenadas.y * scale + offsetY - 5) + 'px'"
+         [title]="label.nota">
     </div>
   </ng-container>
 </div>

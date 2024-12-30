@@ -1,59 +1,282 @@
 <div class="cuerpo">
-  <section class="sidebar">
+  <section class="sidebar" [class.collapsed]="isSidebarCollapsed">
     <button class="toggle-button" (click)="toggleSidebar()">☰</button>
     <div class="sidebar-content" [class.collapsed]="isSidebarCollapsed">
-      <div *ngIf="isLoading">
-        <app-loading-spinner></app-loading-spinner>
-      </div>
-      <div *ngIf="!isLoading">
-        <div *ngIf="!isEditingNota">
-          <div class="section">
+      <div class="scrollable-content">
+        <div *ngIf="isLoading">
+          <app-loading-spinner></app-loading-spinner>
+        </div>
+        <div *ngIf="!isLoading">
+          <div class="section-buttons" *ngIf="!selectedNota">
+            <button [class.active]="selectedSection === 'info'" (click)="selectSection('info')">Info</button>
+            <button [class.active]="selectedSection === 'labels'" (click)="selectSection('labels')">Etiquetas</button>
+            <button [class.active]="selectedSection === 'notes'" (click)="selectSection('notes')">Notas</button>
+          </div>
+
+          <!-- Sección de Información -->
+          <div *ngIf="selectedSection === 'info' && !selectedNota" class="section">
             <h3>Imágenes</h3>
             <div class="list-group">
               <div class="list-group-item" *ngFor="let captura of tejidosArray[0]?.capturas" (click)="seleccionarImagen(captura)">
                 {{ captura.name }}
               </div>
             </div>
-          </div>
-
-          <div class="section">
-            <h3>Notas</h3>
-            <div class="list-group">
-              <div class="list-group-item" *ngFor="let nota of tejidosArray[0]?.notas" (click)="editNota(nota)">
-                {{ nota.titulo }}
-              </div>
-            </div>
-            <button (click)="startAddNota()">Agregar Nota</button>
-          </div>
-
-          <div class="section">
-            <h3>Sistemas y Órganos</h3>
-            <div class="list-group">
-              <div class="list-group-item" *ngFor="let sistema of tejidosArray[0]?.sistemas" (click)="selectCategory(sistema)">
-                {{ sistema }}
+            <div class="section">
+              <h3>Sistemas y Órganos</h3>
+              <div class="list-group">
+                <div class="list-group-item" *ngFor="let sistema of tejidosArray[0]?.sistemas" (click)="selectCategory(sistema)">
+                  {{ sistema }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div *ngIf="isEditingNota">
-          <div class="section">
-            <h3>{{ newNota.id ? 'Editar Nota' : 'Agregar Nota' }}</h3>
-            <form (ngSubmit)="saveNota()">
-              <input [(ngModel)]="newNota.titulo" name="titulo" placeholder="Título" required />
-              <textarea [(ngModel)]="newNota.cuerpo" name="cuerpo" placeholder="Cuerpo" required></textarea>
-              <button type="submit">{{ newNota.id ? 'Actualizar' : 'Guardar' }}</button>
-              <button type="button" (click)="isEditingNota = false">Cancelar</button>
-            </form>
+          <!-- Sección de Etiquetas -->
+          <div *ngIf="selectedSection === 'labels' && !selectedNota" class="section">
+            <h3>Etiquetas</h3>
+            <button class="tag-mode-button" [class.active]="isTaggingMode" (click)="toggleTaggingMode()">
+              {{ isTaggingMode ? 'Finalizar etiquetado' : 'Agregar etiqueta' }}
+            </button>
+            
+            <!-- Labels list -->
+            <div class="labels-list">
+              <div *ngFor="let label of currentLabels" 
+                   class="label-item"
+                   [class.editing]="label.id === editingLabelId"
+                   [class.highlighted]="label === highlightedLabel"
+                   [class.public]="label.public"
+                   [class.own]="label.is_owner"
+                   [class.disabled]="!label.visible"
+                   (mouseenter)="highlightLabel(label)"
+                   (mouseleave)="unhighlightLabel()">
+                <!-- Si no está en modo edición -->
+                <div *ngIf="label.id !== editingLabelId" 
+                     class="label-container">
+                  <div class="label-toggle">
+                    <input type="checkbox"
+                           [checked]="label.visible"
+                           (change)="toggleLabelVisibility(label)"
+                           (click)="$event.stopPropagation()">
+                  </div>
+                  <div class="label-content"
+                       (click)="label.is_owner ? startEditingLabel(label) : null"
+                       [class.readonly]="!label.is_owner">
+                    <span class="label-tag">
+                      {{getLabelTagName(label)}}
+                      <span class="label-visibility">
+                        {{label.public ? '(Público)' : '(Privado)'}}
+                      </span>
+                    </span>
+                    <span class="label-note">{{label.nota || 'Sin descripción'}}</span>
+                    <span class="label-creator" *ngIf="!label.is_owner">
+                      Creado por: {{label.creator_name}}
+                    </span>
+                  </div>
+                </div>
+                <!-- Formulario de edición inline (solo para propietarios) -->
+                <div *ngIf="label.id === editingLabelId && label.is_owner" 
+                     class="label-edit-form inline">
+                  <div class="form-content">
+                    <select class="tag-select" 
+                            [(ngModel)]="newLabel.tag"
+                            name="tag"
+                            required>
+                      <option [ngValue]="null">Seleccione un tag</option>
+                      <option *ngFor="let tag of availableTags" 
+                              [ngValue]="tag.id">
+                        {{tag.name}} ({{tag.public ? 'Público' : 'Privado'}})
+                      </option>
+                    </select>
+                    <input type="text"
+                           class="label-description"
+                           [(ngModel)]="newLabel.nota"
+                           name="nota"
+                           required
+                           placeholder="Descripción de la etiqueta"/>
+                    <div class="form-actions">
+                      <div class="visibility-toggle" *ngIf="auth.getUser()?.is_profesor">
+                        <input 
+                          type="checkbox" 
+                          [(ngModel)]="newLabel.public" 
+                          [checked]="newLabel.public"
+                          name="public" 
+                          id="labelPublic"
+                          class="toggle-checkbox">
+                        <label for="labelPublic" class="toggle-label">Hacer pública</label>
+                      </div>
+                      <div class="action-buttons">
+                        <button class="save-button small" 
+                                (click)="saveLabel()"
+                                [disabled]="!newLabel.tag || !newLabel.nota">
+                          Guardar
+                        </button>
+                        <button class="cancel-button small" (click)="cancelEditing()">
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Sección de Notas -->
+          <div *ngIf="selectedSection === 'notes'" class="section">
+            <!-- Mostrar el formulario de nueva nota si isEditingNota es true y no hay nota seleccionada -->
+            <div *ngIf="isEditingNota && !selectedNota" class="note-viewer">
+              <div class="note-viewer-header">
+                <button class="note-viewer-back" (click)="closeNota()">
+                  ← Volver
+                </button>
+                <h3>Nueva Nota</h3>
+              </div>
+              <form class="note-viewer-form" (ngSubmit)="saveNota()">
+                <input 
+                  [(ngModel)]="newNota.titulo" 
+                  name="titulo" 
+                  placeholder="Título" 
+                  required />
+                <textarea 
+                  [(ngModel)]="newNota.cuerpo" 
+                  name="cuerpo" 
+                  placeholder="Cuerpo" 
+                  required></textarea>
+                <div class="form-actions">
+                  <div class="visibility-toggle" *ngIf="auth.getUser()?.is_profesor">
+                    <input 
+                      type="checkbox" 
+                      [(ngModel)]="newNota.public" 
+                      name="public" 
+                      id="notePublic"
+                      class="toggle-checkbox">
+                    <label for="notePublic" class="toggle-label">Hacer pública</label>
+                  </div>
+                  <div class="action-buttons">
+                    <button type="button" (click)="closeNota()">Cancelar</button>
+                    <button type="submit">Guardar</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          
+            <!-- Mostrar las secciones de notas solo si no estamos editando ni viendo una nota -->
+            <div *ngIf="!isEditingNota && !selectedNota">
+              <h3>Notas</h3>
+              
+              <!-- Notas públicas -->
+              <div class="notes-section">
+                <h4>Notas Públicas</h4>
+                <div class="list-group">
+                  <div class="list-group-item note-card" *ngFor="let nota of publicNotas" (click)="selectNota(nota)">
+                    <div class="note-preview">
+                      <div class="note-header">
+                        <h5>{{ nota.titulo }}</h5>
+                        <span class="note-tag public">Pública</span>
+                      </div>
+                      <p class="note-preview-text">{{ nota.cuerpo | slice:0:100 }}{{ nota.cuerpo.length > 100 ? '...' : '' }}</p>
+                    </div>
+                  </div>
+                  <div *ngIf="publicNotas.length === 0" class="empty-notes">
+                    No hay notas públicas disponibles
+                  </div>
+                </div>
+              </div>
+            
+              <!-- Notas privadas -->
+              <div class="notes-section">
+                <h4>Mis Notas</h4>
+                <div class="list-group">
+                  <div class="list-group-item note-card" *ngFor="let nota of privateNotas" (click)="selectNota(nota)">
+                    <div class="note-preview">
+                      <div class="note-header">
+                        <h5>{{ nota.titulo }}</h5>
+                        <span class="note-tag private">Privada</span>
+                      </div>
+                      <p class="note-preview-text">{{ nota.cuerpo | slice:0:100 }}{{ nota.cuerpo.length > 100 ? '...' : '' }}</p>
+                    </div>
+                  </div>
+                  <div *ngIf="privateNotas.length === 0" class="empty-notes">
+                    No hay notas privadas
+                  </div>
+                </div>
+              </div>
+            
+              <button (click)="startAddNota()" class="add-note-button">Agregar Nota</button>
+            </div>
+          
+            <!-- Nueva vista de nota seleccionada -->
+            <div *ngIf="selectedNota" class="note-viewer">
+              <div class="note-viewer-header">
+                <button class="note-viewer-back" (click)="closeNota()">
+                  ← Volver
+                </button>
+                <h3>{{ isEditingNota ? 'Editar Nota' : 'Ver Nota' }}</h3>
+              </div>
+          
+              <!-- Modo visualización -->
+              <div *ngIf="!isEditingNota" class="note-viewer-content">
+                <div class="title">{{ selectedNota.titulo }}</div>
+                <div class="body">{{ selectedNota.cuerpo }}</div>
+                <div class="note-metadata">
+                  {{ selectedNota.public ? 'Nota pública' : 'Nota privada' }}
+                  <span *ngIf="isNotaOwner(selectedNota)">
+                    - Creada por ti
+                  </span>
+                </div>
+                <div class="note-viewer-actions" *ngIf="isNotaOwner(selectedNota)">
+                  <button (click)="startEditNota()">Editar</button>
+                  <button (click)="deleteNota()" class="delete-button">Eliminar</button>
+                </div>
+              </div>
+          
+              <!-- Modo edición -->
+              <form *ngIf="isEditingNota" class="note-viewer-form" (ngSubmit)="saveNota()">
+                <input 
+                  [(ngModel)]="newNota.titulo" 
+                  name="titulo" 
+                  placeholder="Título" 
+                  required />
+                <textarea 
+                  [(ngModel)]="newNota.cuerpo" 
+                  name="cuerpo" 
+                  placeholder="Cuerpo" 
+                  required></textarea>
+                <div class="note-visibility" *ngIf="auth.getUser()?.is_profesor">
+                  <div class="visibility-toggle">
+                    <input 
+                      type="checkbox" 
+                      [(ngModel)]="newNota.public" 
+                      name="public" 
+                      id="notePublic"
+                      class="toggle-checkbox">
+                    <label for="notePublic" class="toggle-label">Hacer pública</label>
+                  </div>
+                </div>
+                <div class="note-viewer-actions">
+                  <button type="button" (click)="cancelEdit()">Cancelar</button>
+                  <button type="submit">Guardar</button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
-      <div *ngIf="errorMessage" class="error-message">
-        {{ errorMessage }}
+        <div *ngIf="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
       </div>
     </div>
   </section>
-  <section class="base">
-    <app-imagen-zoom [imageUrl]="imagenSeleccionada?.image" [initialLabels]="initialLabels" [centerImage]="true"></app-imagen-zoom>
+  <section class="base" [class.full-width]="isSidebarCollapsed">
+    <app-imagen-zoom *ngIf="imagenSeleccionada"
+      [imageUrl]="imagenSeleccionada.image" 
+      [initialLabels]="initialLabels" 
+      [centerImage]="true"
+      [capturaId]="imagenSeleccionada.id"
+      [highlightedLabelId]="highlightedLabelId"
+      [isTaggingMode]="isTaggingMode"
+      (labelCreated)="onLabelCreated($event)">
+    </app-imagen-zoom>
   </section>
 </div>

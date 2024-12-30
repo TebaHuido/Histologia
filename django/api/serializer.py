@@ -85,7 +85,8 @@ class MuestraSerializer(serializers.ModelSerializer):
     )
     sistema = serializers.ListField(
         child=serializers.CharField(max_length=100),
-        write_only=True  # Solo se usará para crear
+        write_only=True,  # Solo se usará para crear
+        required=False  # Permitir que el campo sea opcional
     )
     tincion = serializers.ListField(
         child=serializers.CharField(max_length=100),
@@ -111,16 +112,22 @@ class MuestraSerializer(serializers.ModelSerializer):
     def validate_organo(self, value):
         organos = []
         for name in value:
-            name_normalized = name.strip().lower()
-            organo, _ = Organo.objects.get_or_create(name=name_normalized)
+            if name.isdigit():
+                organo = Organo.objects.get(id=name)
+            else:
+                name_normalized = name.strip().lower()
+                organo, _ = Organo.objects.get_or_create(name=name_normalized)
             organos.append(organo)
         return organos
 
     def validate_sistema(self, value):
         sistemas = []
         for name in value:
-            name_normalized = name.strip().lower()
-            sistema, _ = Sistema.objects.get_or_create(name=name_normalized)
+            if name.isdigit():
+                sistema = Sistema.objects.get(id=name)
+            else:
+                name_normalized = name.strip().lower()
+                sistema, _ = Sistema.objects.get_or_create(name=name_normalized)
             sistemas.append(sistema)
         return sistemas
 
@@ -148,7 +155,7 @@ class MuestraSerializer(serializers.ModelSerializer):
         muestra.tincion.set(tincion_instances)
 
         # Solo asociamos sistemas si se han proporcionado
-        if sistema_instances and sistema_instances != 'null':
+        if sistema_instances:
             for organo in organo_instances:
                 if isinstance(organo, Organo):
                     organo.sistema.set(sistema_instances)
@@ -185,16 +192,36 @@ class LoteSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class AlumnoSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UserSerializer(required=False)  # Make user optional for updates
+    curso = serializers.PrimaryKeyRelatedField(many=True, queryset=Curso.objects.all())
 
     class Meta:
         model = Alumno
-        fields = ['user', 'name', 'curso', 'permiso']
+        fields = ['id', 'user', 'name', 'curso', 'permiso']
+
+    def update(self, instance, validated_data):
+        # Remove user data from update if present
+        user_data = validated_data.pop('user', None)
+        
+        # Update only email if provided in user_data
+        if user_data and 'email' in user_data:
+            instance.user.email = user_data['email']
+            instance.user.save()
+
+        # Update alumno fields
+        instance.name = validated_data.get('name', instance.name)
+        if 'curso' in validated_data:
+            instance.curso.set(validated_data['curso'])
+        if 'permiso' in validated_data:
+            instance.permiso.set(validated_data['permiso'])
+        
+        instance.save()
+        return instance
 
 class NotaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notas
-        fields = ['id', 'titulo', 'cuerpo', 'muestra', 'alumno', 'profesor']
+        fields = ['id', 'titulo', 'cuerpo', 'muestra', 'alumno', 'profesor', 'public']  # Add public field
 
 class MuestraSerializer2(serializers.ModelSerializer):
     capturas = serializers.SerializerMethodField()
@@ -225,10 +252,59 @@ class TincionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tincion
         fields = '__all__'
+
 class TagsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = '__all__'
+
+class LabelSerializer(serializers.ModelSerializer):
+    is_owner = serializers.SerializerMethodField()
+    tag_details = TagsSerializer(source='tag', read_only=True)
+
+    class Meta:
+        model = Label
+        fields = ['id', 'nota', 'tag', 'tag_details', 'coordenadas', 'captura', 
+                 'created_by', 'creator_name', 'created_at', 'public', 'is_owner']
+        read_only_fields = ['creator_name', 'is_owner', 'created_by', 'tag_details']
+
+    def validate_tag(self, value):
+        if isinstance(value, (int, str)):
+            try:
+                return Tag.objects.get(id=int(value))
+            except (Tag.DoesNotExist, ValueError):
+                raise serializers.ValidationError("Invalid tag ID")
+        return value
+
+    def create(self, validated_data):
+        user = self.context['request'].user if 'request' in self.context else None
+        if user:
+            validated_data['created_by'] = user
+            if not user.is_profesor and not user.is_ayudante:
+                validated_data['public'] = False  # Ensure labels created by non-professors are private
+        return super().create(validated_data)
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return obj.created_by == request.user
+        return False
+
+class TagSerializer(serializers.ModelSerializer):
+    is_owner = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tag
+        fields = ['id', 'name', 'public', 'alumno', 'profesor', 'ayudante', 
+                 'created_at', 'is_owner']
+
+    def get_is_owner(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user'):
+            return (obj.alumno == request.user or 
+                    obj.profesor == request.user)
+        return False
+
 class CursoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Curso

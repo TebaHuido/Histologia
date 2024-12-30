@@ -1,19 +1,150 @@
-<div class="upload-container">
-  <h2>Subir Archivo XLS</h2>
-  <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()">
-    <input type="file" (change)="onFileChange($event)" />
-    <button type="submit">Subir</button>
-  </form>
+<div class="container">
+  <!-- Vista de Cursos -->
+  <div class="section" [hidden]="selectedCurso">
+    <div class="header">
+      <h2>Gestión de Cursos</h2>
+      <button class="add-button" (click)="showNewCursoForm = true">+ Nuevo Curso</button>
+    </div>
 
-  <div class="debug-info">
-    <h3>Lista de Cursos</h3>
-    <ul>
-      <li *ngFor="let curso of cursos">{{ curso.asignatura }}</li>
-    </ul>
+    <!-- Formulario para nuevo curso -->
+    <div class="curso-form" *ngIf="showNewCursoForm">
+      <h3>{{ editingCurso ? 'Editar' : 'Nuevo' }} Curso</h3>
+      <form (ngSubmit)="saveCurso()" #cursoFormDir="ngForm">
+        <input [(ngModel)]="cursoForm.asignatura" name="asignatura" placeholder="Asignatura" required />
+        <input [(ngModel)]="cursoForm.anio" name="anio" type="number" placeholder="Año" required />
+        <select [(ngModel)]="cursoForm.semestre" name="semestre" required>
+          <option [ngValue]="true">Primer Semestre</option>
+          <option [ngValue]="false">Segundo Semestre</option>
+        </select>
+        <input [(ngModel)]="cursoForm.grupo" name="grupo" placeholder="Grupo" required />
+        <div class="form-actions">
+          <button type="submit" [disabled]="isCreatingCurso">
+            <span *ngIf="isCreatingCurso">
+              <i class="fas fa-spinner fa-spin"></i> Guardando...
+            </span>
+            <span *ngIf="!isCreatingCurso">
+              {{editingCurso ? 'Actualizar' : 'Crear'}} Curso
+            </span>
+          </button>
+          <button type="button" (click)="resetCursoForm()" [disabled]="isCreatingCurso">Cancelar</button>
+        </div>
+      </form>
+    </div>
 
-    <h3>Lista de Alumnos</h3>
-    <ul>
-      <li *ngFor="let alumno of alumnos">{{ alumno.name }}</li>
-    </ul>
+    <!-- Mostrar información del último curso creado -->
+    <div class="curso-created-info" *ngIf="lastCreatedCurso">
+      <div class="alert alert-success">
+        <h4>Curso creado exitosamente</h4>
+        <p>Asignatura: {{lastCreatedCurso.asignatura}}</p>
+        <p>Año: {{lastCreatedCurso.anio}}</p>
+        <p>Semestre: {{lastCreatedCurso.semestre ? '1' : '2'}}</p>
+        <p>Grupo: {{lastCreatedCurso.grupo}}</p>
+        <button (click)="lastCreatedCurso = null">Cerrar</button>
+      </div>
+    </div>
+
+    <!-- Subida de archivo XLS -->
+    <div class="upload-section">
+      <h3>Importar Curso desde Excel</h3>
+      <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()">
+        <!-- Datos del curso -->
+        <div class="curso-info">
+          <input formControlName="asignatura" placeholder="Nombre de la Asignatura" required />
+          <input type="number" formControlName="anio" placeholder="Año" required />
+          <select formControlName="semestre" required>
+            <option value="" disabled>Seleccione semestre</option>
+            <option [ngValue]="true">Primer Semestre</option>
+            <option [ngValue]="false">Segundo Semestre</option>
+          </select>
+          <input formControlName="grupo" placeholder="Grupo" required />
+        </div>
+        
+        <!-- Selector de archivo -->
+        <div class="file-input">
+          <input type="file" (change)="onFileChange($event)" />
+          <button type="submit" [disabled]="!uploadForm.valid">Subir</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de Cursos -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Asignatura</th>
+            <th>Año</th>
+            <th>Semestre</th>
+            <th>Grupo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let curso of cursosConEspecial" 
+              [ngClass]="{'special-row': curso.isSpecial}">
+            <td>{{curso.asignatura}}</td>
+            <td>{{curso.anio}}</td>
+            <td>{{curso.semestre ? '1' : '2'}}</td>
+            <td>{{curso.grupo}}</td>
+            <td class="actions">
+              <button (click)="selectCursoFromList(curso)">Ver Alumnos</button>
+              <ng-container *ngIf="!curso.isSpecial">
+                <button (click)="editCurso(curso)">Editar</button>
+                <button (click)="deleteCursoById(curso.id)">Eliminar</button>
+              </ng-container>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Vista de Alumnos -->
+  <div class="section" *ngIf="selectedCurso">
+    <div class="header">
+      <h2>Alumnos del Curso: {{selectedCurso.asignatura}}</h2>
+      <div class="header-buttons">
+        <button class="add-button" (click)="showNewAlumnoForm = true">+ Nuevo Alumno</button>
+        <button class="back-button" (click)="backToCursos()">← Volver a Cursos</button>
+      </div>
+    </div>
+
+    <!-- Formulario para nuevo/editar alumno -->
+    <div class="form-container" *ngIf="showNewAlumnoForm || editingAlumno">
+      <h3>{{editingAlumno ? 'Editar' : 'Nuevo'}} Alumno</h3>
+      <form (ngSubmit)="saveAlumno()" #alumnoFormDir="ngForm">
+        <input [(ngModel)]="alumnoForm.name" name="name" placeholder="Nombre" required />
+        <input [(ngModel)]="alumnoForm.user.email" name="email" placeholder="Email" required email />
+        <div class="form-buttons">
+          <button type="submit" [disabled]="!alumnoFormDir.form.valid">Guardar</button>
+          <button type="button" (click)="cancelAlumnoEdit()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de Alumnos -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let alumno of alumnos">
+            <td>{{alumno.name}}</td>
+            <td>{{alumno.user.email}}</td>
+            <td class="actions">
+              <button (click)="editAlumno(alumno)">Editar</button>
+              <button (click)="deleteAlumnoById(alumno.id)">
+                {{ selectedCurso.isSpecial ? 'Eliminar' : 'Quitar del curso' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

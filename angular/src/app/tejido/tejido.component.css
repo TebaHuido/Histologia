@@ -1,17 +1,21 @@
 .cuerpo {
   display: flex;
-  grid-template-columns: 1fr 2fr;
-  grid-gap: 20px;
-  padding: 20px;
+  padding: 5px;
+  height: calc(100vh - 120px);
+  overflow: hidden;
 }
 
 .sidebar {
   width: 250px;
   transition: width 0.3s;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .sidebar.collapsed {
-  width: 50px;
+  width: 40px;
 }
 
 .toggle-button {
@@ -20,136 +24,113 @@
   border: none;
   padding: 10px;
   cursor: pointer;
+  position: absolute;
+  width: 40px;
+  z-index: 1000;
 }
 
 .sidebar-content {
-  overflow: hidden;
+  flex: 1;
+  height: 100%;
+  padding: 50px 10px 10px;
 }
 
 .sidebar-content.collapsed {
   display: none;
 }
 
-.section {
-  margin: 20px 0;
+.scrollable-content {
+  height: 100%;
+  overflow-y: auto;
 }
 
-.section h3 {
-  margin-bottom: 10px;
+/* Update general button styles */
+button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #e9ecef;
+  color: #495057;
+  border: 1px solid #ced4da;
 }
 
-.container {
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  box-sizing: border-box;
-  margin-bottom: 50px;
-  height: 70vh;
-  background-color: #f9f9f9;
-}
-
-.category {
-  font-weight: bold;
-  width: 100%;
-  text-align: center;
-  background-color: #007bff;
+button:hover {
+  background-color: #24407E;
+  border-color: #1b2f5e;
   color: white;
-  padding: 10px;
-  margin-bottom: 10px;
-  border-radius: 5px;
 }
 
-.notes {
-    font-weight: bold;
-    width: 70px;
-    text-align: center;
-    background-color: #f5f5f5;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-  }
-
-.tissue {
-    font-weight: bold;
-    width: 150px;
-    text-align: center;
-    background-color: #f5f5f5;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
+button:active {
+  background-color: #1b2f5e;
+  color: white;
 }
 
-.tissue-group {
-    padding: auto;
-    margin-bottom: 5px;
-    border-radius: 5px;
-    .orden {
-        float: left;
-        width: 25%;
-        height: 80%;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        box-sizing: border-box;
-    }
+/* Update section buttons container and buttons */
+.section-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.section-buttons button {
+  flex: 1;
+  white-space: nowrap;
+  padding: 8px 5px;
+  margin: 0;
+  min-width: 0;
+  font-size: 0.9em;
+}
+
+.section-buttons button.active {
+  background-color: #24407E;
+  color: white;
+  border-color: #1b2f5e;
+}
+
+/* Update note viewer action buttons */
+.note-viewer-actions button {
+  min-width: 80px;
+}
+
+.note-viewer-back {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  padding: 6px 12px;
+}
+
+.note-viewer-back:hover {
+  background-color: #e9ecef;
+}
+
+/* Update delete button */
+.delete-button {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.delete-button:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
 }
 
 .list-group {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.list-group-category {
-  border: none;
-  color: white;
-  padding: 10px;
-  width: 100%;
-  margin-bottom: 10px;
-  cursor: pointer;
-  border-radius: 5px;
-  justify-content: center;
-  align-items: center;
-  display: flex;
-  background-color: #007bff;
-  transition: transform 0.3s ease-in-out;
-}
-
-.list-group-category:hover {
-  background-color: #0056b3;
-}
-
-.list-group-category:active {
-  transform: scale(0.95);
-}
-
-.list-group-notes {
-    background-color: #f5f5f5;
-    width: 100%;
-    margin: auto;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    justify-content: center;
-    align-items: center;
-    display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .list-group-item {
-    background-color: #f5f5f5;
-    margin: auto;
-    margin-top: 5px;
-    margin-bottom: 5px;
-    padding: 5px;
-    margin-bottom: 5px;
-    border-radius: 5px;
-    cursor: pointer;
-    justify-content: center;
-    align-items: center;
-    display: flex;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
+  background-color: #f5f5f5;
+  margin: 5px 0;
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
 }
 
 .list-group-item:hover {
@@ -161,10 +142,516 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 70vh;
-  width: 100%;
+  height: 100%; /* Cambiado de 70vh a 100% */
+  width: calc(100% - 250px);
+  transition: width 0.3s;
   border: 1px solid #ccc;
   padding: 20px;
   background-color: #f9f9f9;
   border-radius: 10px;
+}
+
+.base.full-width {
+  width: calc(100% - 50px);
+}
+
+/* Agregar estilo para el contenedor de imagen-zoom */
+app-imagen-zoom {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.label-edit-form {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 10px 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.label-edit-form.inline {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+
+.form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.label-item {
+  padding: 10px;
+  margin: 5px 0;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #dee2e6;
+  transition: transform 0.2s;
+}
+
+.label-item:hover {
+  transform: translateX(5px);
+}
+
+.label-item.editing {
+  border-color: #24407E;
+  background-color: #f8f9fa;
+  padding: 15px;
+  transition: all 0.3s ease;
+}
+
+.label-item.highlighted {
+  background-color: #e3f2fd;
+  border-color: #24407E;
+}
+
+.label-tag {
+  display: block;
+  font-weight: 500;
+  color: #24407E;
+  margin-bottom: 4px;
+}
+
+.label-note {
+  display: block;
+  color: #6c757d;
+  font-size: 0.9em;
+}
+
+.save-button, .cancel-button {
+  padding: 6px 12px;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.save-button {
+  background-color: #28a745;
+}
+
+.save-button:hover {
+  background-color: #218838;
+}
+
+.cancel-button {
+  background-color: #dc3545;
+}
+
+.cancel-button:hover {
+  background-color: #c82333;
+}
+
+.tag-mode-button {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  background-color: #28a745;
+  color: white;
+}
+
+.tag-mode-button:hover {
+  background: #218838;
+}
+
+.tag-mode-button.active {
+  background-color: #dc3545;
+}
+
+.label-edit-form.inline {
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.label-edit-form.inline .form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-edit-form.inline .tag-select,
+.label-edit-form.inline .label-description {
+  padding: 6px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.label-edit-form.inline .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.label-edit-form.inline button {
+  padding: 4px 8px;
+  font-size: 0.875rem;
+}
+
+.label-edit-form.inline .form-content {
+  gap: 8px;
+}
+
+.label-edit-form.inline .tag-select,
+.label-edit-form.inline .label-description {
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.label-edit-form.inline .form-actions {
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.button.small {
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: 30px;
+}
+
+.label-item.public {
+  border-left: 3px solid #28a745;
+}
+
+.label-item.own {
+  border-left: 3px solid #24407E;
+}
+
+.label-item.readonly {
+  cursor: default;
+  background-color: #f8f9fa;
+}
+
+.label-visibility {
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-left: 5px;
+}
+
+.label-creator {
+  display: block;
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.label-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.label-toggle {
+  padding-top: 2px;
+}
+
+.label-content {
+  flex-grow: 1;
+}
+
+.label-item.disabled {
+  opacity: 0.5;
+}
+
+.label-item.disabled .label-content {
+  text-decoration: line-through;
+}
+
+/* Estilos para el visor de notas */
+.note-viewer {
+  padding: 15px;
+}
+
+.note-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.note-viewer-header h3 {
+  margin: 0;
+  font-size: 1.2em;
+  color: #333;
+}
+
+.note-viewer-back {
+  background: #f0f0f0;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.note-viewer-back:hover {
+  background: #e0e0e0;
+}
+
+.note-viewer-content {
+  margin-bottom: 20px;
+}
+
+.note-viewer-content .title {
+  font-weight: bold;
+  color: #444;
+  margin-bottom: 10px;
+}
+
+.note-viewer-content .body {
+  color: #666;
+  white-space: pre-wrap;
+}
+
+.note-viewer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.note-viewer-form input,
+.note-viewer-form textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.note-viewer-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.note-viewer-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 15px;
+}
+
+.note-visibility {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 10px 0;
+}
+
+.note-metadata {
+  font-size: 0.9em;
+  color: #666;
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* New styles for notes section */
+.notes-section {
+  margin-bottom: 20px;
+}
+
+.notes-section h4 {
+  color: #24407E;
+  margin: 10px 0;
+  font-size: 1em;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.empty-notes {
+  text-align: center;
+  color: #6c757d;
+  padding: 10px;
+  font-style: italic;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin: 5px 0;
+}
+
+.note-tag {
+  font-size: 0.8em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 5px;
+}
+
+.note-tag.public {
+  background-color: #28a745;
+  color: white;
+}
+
+.note-tag.private {
+  background-color: #6c757d;
+  color: white;
+}
+
+.add-note-button {
+  width: 100%;
+  margin-top: 15px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px;
+  font-weight: 500;
+}
+
+.add-note-button:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Updated note card styles */
+.note-card {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.note-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: #24407E;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.note-header h5 {
+  margin: 0;
+  font-size: 1em;
+  color: #24407E;
+  font-weight: 500;
+}
+
+.note-preview-text {
+  margin: 0;
+  font-size: 0.9em;
+  color: #666;
+  line-height: 1.4;
+  max-height: 4.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Update note tags style */
+.note-tag {
+  font-size: 0.75em;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.note-tag.public {
+  background-color: #e3fcef;
+  color: #0d6832;
+  border: 1px solid #a3e9c5;
+}
+
+.note-tag.private {
+  background-color: #e9ecef;
+  color: #495057;
+  border: 1px solid #ced4da;
+}
+
+/* Estilos actualizados para el toggle de visibilidad */
+.visibility-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  width: 100%;
+}
+
+.toggle-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.toggle-label {
+  margin: 0;
+  font-size: 0.9em;
+  color: #495057;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Actualizar los form-actions para mejor alineación */
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Estilos para el checkbox personalizado */
+.toggle-checkbox:checked + .toggle-label {
+  color: #24407E;
+}
+
+.visibility-toggle:hover {
+  background: #e9ecef;
+}
+
+/* Ajustar los estilos para el formulario de etiquetas */
+.label-edit-form.inline .form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.label-edit-form.inline .visibility-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+  width: auto;
+  min-width: 150px;
+}
+
+.label-edit-form.inline .action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.label-edit-form.inline .toggle-checkbox {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.label-edit-form.inline .toggle-label {
+  font-size: 0.85em;
+  white-space: nowrap;
 }

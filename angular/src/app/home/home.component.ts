@@ -46,9 +46,8 @@ export class HomeComponent implements OnInit {
   }
 
   private loadData(): void {
-    const headers = this.authService.getAuthHeaders();
 
-    this.api.getTejidos('all', headers).subscribe({
+    this.api.getTejidos('all',).subscribe({
       next: (tejidos: Tejido[]) => {
         this.listaTejidos_all = tejidos;
         this.listaTejidos_show = tejidos;
@@ -73,7 +72,7 @@ export class HomeComponent implements OnInit {
       }
     });
 
-    this.api.getFilters(headers).subscribe({
+    this.api.getFilters().subscribe({
       next: (data) => {
         this.categorias = this.transformDataToItems(data.categorias);
         this.organos = this.transformDataToItems(data.organos);
@@ -106,8 +105,7 @@ export class HomeComponent implements OnInit {
   }
 
   filterMuestras(): void {
-    const headers = this.authService.getAuthHeaders();
-    this.api.filterMuestras(this.selectedFilters, headers).subscribe({
+    this.api.filterMuestras(this.selectedFilters,).subscribe({
       next: (tejidos: Tejido[]) => {
         this.listaTejidos_show = tejidos;
         this.obtenerSistemasUnicos();
@@ -136,11 +134,10 @@ export class HomeComponent implements OnInit {
 
   selectCategory(category: string) {
     console.log('Categoría seleccionada:', category);
-    const headers = this.authService.getAuthHeaders();
     if (category === 'all') {
       this.listaTejidos_show = this.listaTejidos_all;
     } else {
-      this.api.getTejidos(category, headers).subscribe({
+      this.api.getTejidos(category).subscribe({
         next: (tejidos: Tejido[]) => {
           this.listaTejidos_show = tejidos;
           this.obtenerSistemasUnicos();
@@ -163,5 +160,16 @@ export class HomeComponent implements OnInit {
 
   getMuestrasSinSistema(): Tejido[] {
     return this.listaTejidos_show.filter(muestra => !muestra.sistemas || muestra.sistemas.length === 0);
+  }
+
+  updateNota(id: number, nota: any): void {
+    this.api.updateNota(id, nota).subscribe({
+      next: (response: any) => {
+        console.log('Nota actualizada exitosamente', response);
+      },
+      error: err => {
+        console.error('Error al actualizar la nota:', err);
+      }
+    });
   }
 }

@@ -26,17 +26,20 @@ export class LoginComponent implements OnInit {
   onSubmit(): void {
     if (this.loginForm.valid) {
       const { username, password } = this.loginForm.value;
-      this.authService.login(username, password).subscribe(
-        (response: any) => {
-          this.authService.setToken(response.access); // Almacena el token de acceso
-          this.authService.setRefreshToken(response.refresh); // Almacena el token de refresco
-          this.authService.setUser(response.user);
-          this.router.navigate(['/']); // Redirige al home
+      this.authService.login(username, password).subscribe({
+        next: (response: any) => {
+          this.router.navigate(['/']);
         },
-        (error: any) => {
+        error: (error: any) => {
           console.error('Login failed', error);
+          let errorMessage = 'Error en el inicio de sesión';
+          if (error.error?.detail) {
+            errorMessage = error.error.detail;
+          }
+          // Aquí puedes mostrar el error al usuario (por ejemplo, con un alert o un mensaje en el UI)
+          alert(errorMessage);
         }
-      );
+      });
     }
   }
 }

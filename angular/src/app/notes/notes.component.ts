@@ -51,9 +51,7 @@ export class NotesComponent {
     console.log(`Guardando cambios para ${sample.name}`);
     console.log('Notas:', sample.notes);
     console.log('Coordenadas:', sample.coordinates);
-
-    const headers = this.authService.getAuthHeaders();
-    this.apiService.updateSample(sample.id, sample, headers).subscribe({
+    this.apiService.updateSample(sample.id, sample).subscribe({
       next: (response: any) => {
         console.log('Cambios guardados exitosamente:', response);
       },

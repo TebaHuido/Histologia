@@ -12,7 +12,8 @@ from django.contrib.auth.models import User
 # Importa los modelos que serán utilizados en las vistas
 from .models import (
     Profesor, Curso, Ayudante, Categoria, Sistema, Organo, 
-    Muestra, Lote, Alumno, Captura, Notas, Tag, Tincion, CustomUser
+    Muestra, Lote, Alumno, Captura, Notas, Tag, Tincion, CustomUser,
+    Label  # Agregar Label a las importaciones
 )
 
 # Importa los serializers para transformar los datos en formatos adecuados para la API
@@ -20,11 +21,12 @@ from .serializer import (
     MuestraSerializer2, NotaSerializer, CapturaSerializer, ProfesorSerializer, 
     CursoSerializer, AyudanteSerializer, CategoriaSerializer, SistemaSerializer, 
     OrganoSerializer, MuestraSerializer, LoteSerializer, AlumnoSerializer,
-    TincionSerializer, TagsSerializer, UserSerializer, ProfesorCreateSerializer
+    TincionSerializer, TagsSerializer, UserSerializer, ProfesorCreateSerializer,
+    LabelSerializer  # Agregar esta línea
 )
 
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .permissions import IsProfesor
+from .permissions import IsProfesor, IsProfesorOrReadOnly
 
 import logging
 import sys
@@ -34,6 +36,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.middleware.csrf import get_token
 from django.http import JsonResponse
 from .utils import create_alumnos_from_xls  # Ensure this import is present
+from django.db import models  # Agregar esta línea para importar models
+
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
+from rest_framework.views import APIView
+from django.http import JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +50,8 @@ sys.stdout = sys.stderr
 
 # Vista genérica para recuperar el detalle de una muestra específica por ID
 class FilterView(APIView):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
+
     def get(self, request, *args, **kwargs):
         categorias_serializadas = CategoriaSerializer(Categoria.objects.all(), many=True).data
         organos_serializados = OrganoSerializer(Organo.objects.all(), many=True).data
@@ -58,6 +68,7 @@ class FilterView(APIView):
         })
 
 class MuestraDetailAPIView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
     # Define el conjunto de datos que consulta
     queryset = Muestra.objects.all()
     # Usa el serializer correspondiente para estructurar los datos
@@ -73,6 +84,7 @@ class CapturaViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MuestraViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
     queryset = Muestra.objects.all()
     serializer_class = MuestraSerializer
 
@@ -84,8 +96,8 @@ class MuestraViewSet(viewsets.ModelViewSet):
 
         # Devolver la respuesta con los datos creados
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    @action(detail=False, methods=['get'])
-    
+
+    @action(detail=False, methods=['get', 'post'])
     def Filtrado(self, request):
         categories = request.query_params.getlist('category', [])
         organs = request.query_params.getlist('organ', [])
@@ -108,6 +120,7 @@ class MuestraViewSet(viewsets.ModelViewSet):
 
         serializer = MuestraSerializer(muestras.distinct(), many=True)
         return Response(serializer.data)
+
 # Función para listar capturas asociadas a una muestra específica
 def lista_capturas_muestra(request, muestra_id):
     # Recupera la muestra o lanza un error si no existe
@@ -163,16 +176,19 @@ class AyudanteViewSet(viewsets.ReadOnlyModelViewSet):
 
 # Vista para manejar categorías (solo lectura)
 class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
 
 # Vista para manejar sistemas (solo lectura)
 class SistemaViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
     queryset = Sistema.objects.all()
     serializer_class = SistemaSerializer
 
 # Vista para manejar órganos (solo lectura)
 class OrganoViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
     queryset = Organo.objects.all()
     serializer_class = OrganoSerializer
 
@@ -204,7 +220,7 @@ class NotaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         if user.is_alumno:
-            serializer.save(alumno=user)
+            serializer.save(alumno=user, public=False)  # Ensure notes created by students are private
         elif user.is_profesor:
             serializer.save(profesor=user)
         else:
@@ -216,6 +232,7 @@ class NotaViewSet(viewsets.ModelViewSet):
 
         if user.is_alumno:
             data['alumno'] = user.id
+            data['public'] = False  # Ensure notes created by students are private
         elif user.is_profesor:
             data['profesor'] = user.id
         else:
@@ -227,7 +244,8 @@ class NotaViewSet(viewsets.ModelViewSet):
             'cuerpo': data.get('cuerpo', ''),
             'alumno': data.get('alumno'),
             'profesor': data.get('profesor'),
-            'muestra': data.get('muestra')
+            'muestra': data.get('muestra'),
+            'public': data.get('public', False)  # Add public field
         }
 
         serializer = self.get_serializer(data=nota_data)
@@ -247,7 +265,8 @@ class NotaViewSet(viewsets.ModelViewSet):
             'cuerpo': data.get('cuerpo', ''),
             'alumno': data.get('alumno'),
             'profesor': data.get('profesor'),
-            'muestra': data.get('muestra')
+            'muestra': data.get('muestra'),
+            'public': data.get('public', instance.public)  # Add public field
         }
 
         serializer = self.get_serializer(instance, data=nota_data, partial=partial)
@@ -265,6 +284,7 @@ class NotaViewSet(viewsets.ModelViewSet):
         return Notas.objects.none()
 
 class TincionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
     queryset = Tincion.objects.all()
     serializer_class = TincionSerializer
 
@@ -293,19 +313,97 @@ class MuestraFilterAPIView(generics.ListAPIView):
 
         return queryset.distinct()
 class TagViewSet(viewsets.ModelViewSet):
-    queryset = Tag.objects.all()
+    permission_classes = [IsAuthenticated]
     serializer_class = TagsSerializer
 
+    def get_queryset(self):
+        user = self.request.user
+        # Obtener tags públicos y los creados por el usuario
+        return Tag.objects.filter(
+            models.Q(public=True) |       # Tags públicos
+            models.Q(alumno=user) |       # Tags creados por el alumno
+            models.Q(profesor=user)       # Tags creados por el profesor
+        ).distinct()
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
+            response["Access-Control-Allow-Origin"] = origin
+        response["Access-Control-Allow-Credentials"] = "true"
+        return response
+
+    def options(self, request, *args, **kwargs):
+        response = Response()
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
+            response["Access-Control-Allow-Origin"] = origin
+        response["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-CSRFToken"
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Max-Age"] = "1728000"
+        return response
+
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+from django.utils.decorators import method_decorator
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
+class GetCSRFToken(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def options(self, request, *args, **kwargs):
+        response = JsonResponse({'message': 'OK'})
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
+            response["Access-Control-Allow-Origin"] = origin
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken, Authorization"
+        return response
+
+    def get(self, request):
+        response = JsonResponse({'detail': 'CSRF cookie set'})
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
+            response["Access-Control-Allow-Origin"] = origin
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Expose-Headers"] = "X-CSRFToken"
+        response.set_cookie(
+            'csrftoken',
+            get_token(request),
+            samesite='Lax',
+            secure=False,
+            httponly=False,
+            domain=None,
+            path='/',
+            max_age=3600
+        )
+        return response
+
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class LoginView(APIView):
-    permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
+    permission_classes = []
+    authentication_classes = []
 
     def post(self, request):
         username = request.data.get('username')
         password = request.data.get('password')
-        if not username or not password:
-            return Response({'error': 'Username and password are required'}, status=status.HTTP_400_BAD_REQUEST)
         
+        if not username or not password:
+            return Response({'error': 'Username and password are required'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar si el usuario existe
+        try:
+            user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User does not exist'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Intentar autenticar
         user = authenticate(request, username=username, password=password)
+        
         if user is not None:
             if user.is_active:
                 login(request, user)
@@ -315,14 +413,29 @@ class LoginView(APIView):
                 response = JsonResponse({
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),
-                    'user': user_data
+                    'user': user_data,
+                    'csrfToken': csrf_token  # Include CSRF token in response
                 })
-                response.set_cookie('csrftoken', csrf_token, httponly=True)  # Ensure CSRF token is set in cookies
+                response["Access-Control-Allow-Origin"] = "http://localhost:4200"
+                response["Access-Control-Allow-Credentials"] = "true"
+                response.set_cookie(
+                    'csrftoken',
+                    csrf_token,
+                    max_age=3600,
+                    samesite='Lax',
+                    secure=False,
+                    httponly=False,
+                    domain='localhost'
+                )
                 return response
             else:
-                return Response({'error': 'User account is disabled'}, status=status.HTTP_403_FORBIDDEN)
+                return Response({'error': 'User account is disabled'}, 
+                              status=status.HTTP_403_FORBIDDEN)
         else:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'error': 'Invalid credentials',
+                'detail': 'Authentication failed. Please check username and password.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 class ProfesorCreateView(generics.CreateAPIView):
     queryset = Profesor.objects.all()
@@ -335,28 +448,190 @@ class UplimageView(APIView):
         # Lógica para manejar la subida de imágenes
         pass
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class CursoViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsProfesorOrReadOnly]
     queryset = Curso.objects.all()
     serializer_class = CursoSerializer
+
+    @method_decorator(ensure_csrf_cookie)
+    def destroy(self, request, *args, **kwargs):
+        try:
+            if not request.user.is_profesor:
+                return Response(
+                    {"error": "Solo los profesores pueden eliminar cursos"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+            print(f"Usuario intentando eliminar: {request.user.username} (Es profesor: {request.user.is_profesor})")
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @method_decorator(ensure_csrf_cookie)
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        return response
+
+    @method_decorator(ensure_csrf_cookie)
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        return response
+
+class AlumnoViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = Alumno.objects.all()
+    serializer_class = AlumnoSerializer
+
+    @method_decorator(ensure_csrf_cookie)
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(
+                instance,
+                data=request.data,
+                partial=True,
+                context={'request': request}
+            )
+            
+            if serializer.is_valid():
+                self.perform_update(serializer)
+                return Response(serializer.data)
+            else:
+                return Response(
+                    {"error": str(serializer.errors)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        curso = self.request.query_params.get('curso', None)
+        if curso is not None:
+            queryset = queryset.filter(curso__id=curso)
+        return queryset
+
+    @action(detail=False, methods=['get'])
+    def sin_curso(self, request):
+        alumnos = Alumno.objects.filter(curso=None)
+        serializer = self.get_serializer(alumnos, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['delete'])
+    def remove_from_curso(self, request, pk=None):
+        try:
+            alumno = self.get_object()
+            curso_id = request.query_params.get('curso')
+            
+            if not curso_id:
+                return Response(
+                    {"error": "Se requiere especificar un curso"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            curso = Curso.objects.get(id=curso_id)
+            alumno.curso.remove(curso)
+
+            # Si el alumno ya no tiene cursos, verificar si queremos eliminarlo
+            if not alumno.curso.exists():
+                # Opcional: Eliminar el alumno si no tiene más cursos
+                # alumno.delete()
+                pass
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Curso.DoesNotExist:
+            return Response(
+                {"error": "Curso no encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class UploadXlsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         file = request.FILES.get('file')
-        if file:
-            try:
-                result = create_alumnos_from_xls(file)
-                csrf_token = get_token(request)
-                response = Response({
-                    "message": "File processed successfully",
-                    "curso": result["curso"],
-                    "curso_created": result["curso_created"],
-                    "created_alumnos": result["created_alumnos"],
-                    "existing_alumnos": result["existing_alumnos"]
-                }, status=status.HTTP_200_OK)
-                response.set_cookie('csrftoken', csrf_token, httponly=True)
-                return response
-            except ValueError as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+        asignatura = request.POST.get('asignatura')
+        anio = request.POST.get('anio')
+        semestre = request.POST.get('semestre').lower() == 'true'  # Convert string to boolean
+        grupo = request.POST.get('grupo')
+
+        if not all([file, asignatura, anio, grupo]):
+            return Response({
+                "error": "Faltan datos requeridos"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            curso_data = {
+                'asignatura': asignatura,
+                'anio': int(anio),
+                'semestre': semestre,
+                'grupo': grupo
+            }
+            
+            result = create_alumnos_from_xls(file, curso_data)
+            response_data = {
+                "message": "File processed successfully",
+                "curso": CursoSerializer(result["curso"]).data,
+                "curso_created": result["curso_created"],
+                "created_alumnos": result["created_alumnos"],
+                "existing_alumnos": result["existing_alumnos"]
+            }
+            csrf_token = get_token(request)
+            response = Response(response_data, status=status.HTTP_200_OK)
+            response.set_cookie('csrftoken', csrf_token, httponly=True)
+            return response
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class LabelViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = LabelSerializer
+    queryset = Label.objects.all()  # Agregar esta línea para definir el queryset base
+
+    def get_queryset(self):
+        user = self.request.user
+        # Obtener etiquetas públicas y las creadas por el usuario
+        return Label.objects.filter(
+            models.Q(tag__public=True) |  # Etiquetas con tags públicos
+            models.Q(created_by=user)     # Etiquetas creadas por el usuario actual
+        ).distinct()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.is_alumno:
+            serializer.save(created_by=user, public=False)  # Ensure labels created by students are private
+        else:
+            serializer.save(created_by=user)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        data = request.data
+
+        # Desempaqueta los datos de la etiqueta
+        label_data = {
+            'nota': data.get('nota', instance.nota),
+            'tag': data.get('tag', instance.tag),
+            'coordenadas': data.get('coordenadas', instance.coordenadas),
+            'public': data.get('public', instance.public)  # Add public field
+        }
+
+        serializer = self.get_serializer(instance, data=label_data, partial=partial)
+        if serializer.is_valid():
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -5,11 +5,13 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User, AbstractUser
 from django.conf import settings  # Import settings
+from django.utils import timezone  # Import timezone
 
 def generate_filename(instance, filename):
     extension = filename.split('.')[-1]
     new_filename = f"{uuid.uuid4()}.{extension}"
     return new_filename
+
 
 def default_name():
     return "Captura"  # Placeholder name, will be updated in the Captura model's save method
@@ -17,6 +19,7 @@ def default_name():
 class CustomUser(AbstractUser):
     is_alumno = models.BooleanField(default=False)
     is_profesor = models.BooleanField(default=False)
+    is_ayudante = models.BooleanField(default=False)
     groups = models.ManyToManyField(
         'auth.Group',
         related_name='customuser_set',  # Agrega related_name
@@ -110,10 +113,19 @@ class Tincion(models.Model):
     def __str__(self):
         return f"Tinción: {self.name} ({self.descripcion})"
 
-class Tag (models.Model):
+class Tag(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nombre")
+    public = models.BooleanField(default=False)
+    alumno = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, 
+                              null=True, blank=True, related_name='alumno_tags')
+    profesor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, 
+                               null=True, blank=True, related_name='profesor_tags')
+    ayudante = models.ForeignKey(Ayudante, on_delete=models.SET_NULL, 
+                                null=True, blank=True, related_name='ayudante_tags')
+    created_at = models.DateTimeField(default=timezone.now)  # Cambiado a default=timezone.now
+
     def __str__(self):
-        return f"Tag: {self.name}"
+        return f"Tag: {self.name} ({'Público' if self.public else 'Privado'})"
 
 class Muestra(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nombre")
@@ -171,8 +183,36 @@ class Notas(models.Model):
 
 class Label(models.Model):
     nota = models.CharField(max_length=1500, verbose_name="Nota")
-    tags = models.ManyToManyField('Tag', related_name='labels', verbose_name="Etiquetas")
-    coordenadas = models.JSONField(verbose_name="Coordenadas", help_text="JSON con las coordenadas asociadas")
-    
+    tag = models.ForeignKey(
+        Tag, 
+        on_delete=models.CASCADE, 
+        related_name='labels',
+        null=True,
+        blank=True
+    )
+    coordenadas = models.JSONField(verbose_name="Coordenadas")
+    captura = models.ForeignKey(
+        Captura, 
+        on_delete=models.SET_NULL,
+        related_name='labels',
+        null=True,
+        blank=True
+    )
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, 
+                                 on_delete=models.SET_NULL, 
+                                 null=True,
+                                 related_name='created_labels')
+    creator_name = models.CharField(max_length=255, blank=True, null=True)  # Nuevo campo
+    created_at = models.DateTimeField(default=timezone.now)
+    public = models.BooleanField(default=False)  # Add public field for labels
+    is_temporary = models.BooleanField(default=False)  # Agregar este campo
+
+    def save(self, *args, **kwargs):
+        # Guardar el nombre del creador antes de guardar el modelo
+        if self.created_by and not self.creator_name:
+            self.creator_name = f"{self.created_by.get_full_name() or self.created_by.username}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.nota[:50]  # Retorna los primeros 50 caracteres de la nota
+        creator_info = self.creator_name or "Usuario desconocido"
+        return f"Label: {self.nota[:50]} (Creado por: {creator_info})"

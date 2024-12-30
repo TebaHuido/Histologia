@@ -10,6 +10,43 @@ export interface Categorias{
     id: number;
     name: string;
 }
+export interface Tag {
+    id: number;
+    name: string;
+    public: boolean;
+    alumno?: number;
+    profesor?: number;
+    ayudante?: number;
+    created_at?: string;
+}
+
+export interface Label {
+    id?: number;
+    nota: string;
+    tag: number | Tag | null; // Allow tag to be either number, Tag object, or null
+    tag_details?: Tag;
+    coordenadas: { x: number; y: number };
+    captura: number;
+    created_by?: number;
+    creator_name?: string;
+    created_at?: string;
+    isTemporary?: boolean;
+    highlighted?: boolean;
+    is_owner?: boolean;
+    visible?: boolean;
+    public?: boolean; // Add public property
+}
+
+export interface Nota {
+    id?: number;
+    titulo: string;
+    cuerpo: string;
+    alumno?: number;
+    profesor?: number;
+    muestra?: number;
+    public: boolean;
+}
+
 export interface Muestra {
     id: number;
     name: string;
@@ -17,13 +54,9 @@ export interface Muestra {
         id: number;
         name: string;
         image: string;
+        labels?: Label[];  // Agregar labels a las capturas
     }[];
-    notas: {
-        id: number;
-        titulo: string;
-        cuerpo: string;
-        muestra: number[];
-    }[];
+    notas: Nota[];
     sistemas: string[];
 }
 export interface Tejido {

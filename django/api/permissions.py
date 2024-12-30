@@ -1,6 +1,14 @@
+from rest_framework import permissions
 
-from rest_framework.permissions import BasePermission
-
-class IsProfesor(BasePermission):
+class IsProfesor(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_profesor
+        return bool(request.user and request.user.is_authenticated and request.user.is_profesor)
+
+class IsProfesorOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        # Permitir solicitudes GET, HEAD u OPTIONS
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        # Requerir que sea profesor para DELETE, PUT, POST
+        return bool(request.user and request.user.is_authenticated and request.user.is_profesor)
