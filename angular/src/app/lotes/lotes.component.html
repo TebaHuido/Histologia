@@ -78,8 +78,8 @@
           <label [for]="'muestra-' + muestra.id">
             <strong>{{muestra.name}}</strong>
             <span class="muestra-details">
-              {{muestra.Categoria[0]?.name || 'Sin categoría'}} | 
-              {{muestra.organo[0]?.name || 'Sin órgano'}}
+              {{(muestra.Categoria && muestra.Categoria[0] && muestra.Categoria[0].name) || 'Sin categoría'}} | 
+              {{(muestra.organo && muestra.organo[0] && muestra.organo[0].name) || 'Sin órgano'}}
             </span>
           </label>
         </div>
@@ -161,7 +161,7 @@
               <input 
                 type="checkbox" 
                 [id]="'edit-curso-' + curso.id"
-                [checked]="selectedCursos.includes(curso.id)"
+                [checked]="editSelectedCursos.includes(curso.id)"
                 (change)="toggleCurso(curso.id)"
               >
               <label [for]="'edit-curso-' + curso.id">
@@ -174,11 +174,11 @@
         <div class="form-group">
           <label>Muestras:</label>
           <div class="muestras-list">
-            <div *ngFor="let muestra of muestras" class="muestra-item">
+            <div *ngFor="let muestra of muestrasFiltradas_edit" class="muestra-item">
               <input 
                 type="checkbox" 
                 [id]="'muestra-' + muestra.id"
-                [checked]="selectedMuestras.includes(muestra.id)"
+                [checked]="editSelectedMuestras.includes(muestra.id)"
                 (change)="toggleMuestra(muestra.id)"
               >
               <label [for]="'muestra-' + muestra.id">{{muestra.name}}</label>

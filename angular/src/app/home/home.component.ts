@@ -1,19 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { ApiService } from '../services/api.service';
-import { Tejido, Categorias } from '../services/tejidos.mock';
+import { Tejido, Categorias, Sistema, Item } from '../services/tejidos.mock';
 import { NgFor, CommonModule } from '@angular/common';
 import { FilterComponent } from '../filter/filter.component';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';  // Agregar esta importación
-
-interface Item {
-  nombre: string;
-}
+import { RouterModule } from '@angular/router';  // Add this import
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [NgFor, CommonModule, FilterComponent],
+  imports: [NgFor, CommonModule, FilterComponent, RouterModule],  // Add RouterModule
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
@@ -30,15 +27,17 @@ export class HomeComponent implements OnInit {
   organos: Item[] = [];
   sistemas: Item[] = [];
   tinciones: Item[] = [];
-  tags: Item[] = [];
 
   selectedFilters: { [key: string]: string[] } = {
     category: [],
     organ: [],
     system: [],
-    tincion: [],
-    tag: []
+    tincion: []
+    // Removed "tag" field
   };
+
+  muestrasFiltradas: Tejido[] = [];
+  muestras: Tejido[] = [];
 
   constructor(
     private api: ApiService, 
@@ -56,6 +55,13 @@ export class HomeComponent implements OnInit {
     this.loadTejidos(); // Removemos el parámetro 'all' ya que no se usa
   }
 
+  handleImageError(event: Event): void {
+    const target = event.target as HTMLImageElement;
+    if (!target.src.endsWith('/assets/images/no-image.png')) {
+      target.src = '/assets/images/no-image.png';
+    }
+  }
+
   loadFilters(): void {
     this.api.getFilters().subscribe({
       next: (data) => {
@@ -63,7 +69,7 @@ export class HomeComponent implements OnInit {
         this.organos = this.transformDataToItems(data.organos);
         this.sistemas = this.transformDataToItems(data.sistemas);
         this.tinciones = this.transformDataToItems(data.tinciones);
-        this.tags = this.transformDataToItems(data.tags);
+        // Removed line: this.tags = this.transformDataToItems(data.tags);
       },
       error: (error) => {
         console.error('Error al obtener filtros:', error);
@@ -119,7 +125,7 @@ export class HomeComponent implements OnInit {
   }
 
   filterMuestras(): void {
-    this.api.filterMuestras(this.selectedFilters,).subscribe({
+    this.api.filterMuestras(this.selectedFilters).subscribe({
       next: (tejidos: Tejido[]) => {
         this.listaTejidos_show = tejidos;
         this.obtenerSistemasUnicos();
@@ -136,20 +142,55 @@ export class HomeComponent implements OnInit {
   }
 
   obtenerSistemasUnicos() {
-    const sistemasSet = new Set<string>();
+    // Recreate 'sistemas' if missing
+    this.listaTejidos_show.forEach(tejido => {
+      if (!tejido.sistemas && Array.isArray(tejido.organo)) {
+        tejido.sistemas = [];
+        tejido.organo.forEach(org => {
+          if (org.sistema) {
+            org.sistema.forEach((sis: any) => {
+              tejido.sistemas.push({ sistema: sis.name, organo: org.name });
+            });
+          }
+        });
+      }
+    });
+    const sistemasSet = new Set<string>();  // Changed to just string
     this.listaTejidos_show
-      .filter(tejido => tejido !== null)  // Add null check
+      .filter(tejido => tejido !== null)
       .forEach(tejido => {
         if (Array.isArray(tejido.sistemas) && tejido.sistemas.length > 0) {
           tejido.sistemas
-            .filter(sistema => sistema)  // Filter out null/undefined values
-            .forEach(sistema => sistemasSet.add(sistema));
+            .filter(sistema => sistema && sistema.sistema)  // Check for sistema property
+            .forEach(sistema => sistemasSet.add(sistema.sistema));  // Just add sistema name
         }
       });
+    
     this.sistemasUnicos = Array.from(sistemasSet);
     this.sistemasUnicosFormateados = this.sistemasUnicos
-      .filter(sistema => sistema)  // Filter out null values
+      .filter(sistema => sistema)
       .map(sistema => ({ nombre: sistema }));
+  }
+
+  private updateSistemasList(muestras: Tejido[]): void {
+    const sistemasSet = new Set<Item>();
+    muestras
+      .filter(muestra => muestra.sistemas)
+      .forEach(muestra => 
+        muestra.sistemas.forEach(sistema => 
+          sistemasSet.add({ nombre: `${sistema.sistema} - ${sistema.organo}` })
+        )
+      );
+    this.sistemas = Array.from(sistemasSet);
+  }
+
+  filterBySistema(sistema: Sistema): void {
+    this.muestrasFiltradas = this.listaTejidos_show.filter(muestra => 
+      muestra.sistemas.some(s => 
+        s.sistema === sistema.sistema && 
+        s.organo === sistema.organo
+      )
+    );
   }
 
   selectCategory(category: string) {
@@ -174,12 +215,12 @@ export class HomeComponent implements OnInit {
     console.log(event.offsetX, event.offsetY);
   }
 
-  getMuestrasPorSistema(sistema: string): Tejido[] {
+  getMuestrasPorSistema(sistemaNombre: string): Tejido[] {
     return this.listaTejidos_show
-      .filter(muestra => muestra !== null)  // Add null check
+      .filter(muestra => muestra !== null)
       .filter(muestra => 
         Array.isArray(muestra.sistemas) && 
-        muestra.sistemas.includes(sistema)
+        muestra.sistemas.some(s => s.sistema === sistemaNombre)
       );
   }
 
@@ -202,5 +243,17 @@ export class HomeComponent implements OnInit {
         console.error('Error al actualizar la nota:', err);
       }
     });
+  }
+
+  getImageUrl(muestra: Tejido): string {
+    const baseUrl = 'http://localhost:80';
+    if (muestra.imagenUrl) {
+      return `${baseUrl}${muestra.imagenUrl}`;
+    }
+    // Use the first capture if available
+    if (muestra.capturas && muestra.capturas.length > 0) {
+      return `${baseUrl}${muestra.capturas[0].image}`;
+    }
+    return '/assets/images/no-image.png';
   }
 }

@@ -62,7 +62,7 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
   private lastMouseY: number = 0;
 
   showLabels: boolean = true;
-  availableTags: Tag[] = [];  // Ahora tipado correctamente
+  @Input() availableTags: Tag[] = [];  // Add this line
   selectedLabel: Label | null = null;
 
   @ViewChild('imageContainer', { static: true }) imageContainer!: ElementRef;
@@ -323,7 +323,11 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
           visible: true,
           highlighted: false
         });
-        this.labelCreated.emit(createdLabel);
+        this.labelCreated.emit({
+          ...createdLabel,
+          visible: true,
+          highlighted: false
+        });
         this.cdr.detectChanges();
       },
       error => console.error('Error creating label:', error)

@@ -59,20 +59,34 @@ export interface Muestra {
     notas: Nota[];
     sistemas: string[];
 }
+
+export interface Sistema {
+  sistema: string;    // Solo el nombre del sistema
+  organo: string;     // El órgano asociado
+  display?: string;   // Campo opcional para vista detallada
+}
+
+export interface Item {
+  nombre: string;
+}
+
+export interface Captura {
+  id: number;
+  name: string;
+  image: string;
+}
+
 export interface Tejido {
-    id: number;
-    name: string;
-    imagenUrl: string;
-    sistemas: string[];  // Asegúrate de que esto esté definido como array
-    lotes: number[];  // Agregar esta línea
-    capturas: { id: number; name: string; image: string; }[];
-    notas: { id: number; titulo: string; cuerpo: string; muestra: number[]; }[];
-    Categoria: number[];
-    curso: any[];  // Si tienes una estructura específica para curso, puedes definirla en lugar de usar `any[]`
-    organo: number[];
-    sistema: string;
-    public: boolean;  // Add this property
-    tincion: any[];   // Add this property
+  id: number;
+  name: string;
+  capturas: Captura[];
+  notas: any[];
+  sistemas: Sistema[];
+  public: boolean;
+  imagenUrl?: string;
+  Categoria?: any[];
+  organo?: any[];
+  tincion?: any[];
 }
 
 export interface Profesor {

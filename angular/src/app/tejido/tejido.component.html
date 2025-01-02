@@ -73,8 +73,20 @@
             <div class="section">
               <h3>Sistemas y Órganos</h3>
               <div class="list-group">
-                <div class="list-group-item" *ngFor="let sistema of tejidosArray[0]?.sistemas" (click)="selectCategory(sistema)">
-                  {{ sistema }}
+                <div class="list-group-item" *ngFor="let sistema of tejidosArray[0]?.sistemas">
+                  {{ sistema.display }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Listing all tejidos -->
+          <div class="tejidos-list">
+            <div class="tejido-item" *ngFor="let tejido of tejidosArray">
+              <h4>{{ tejido.name }}</h4>
+              <div class="sistemas">
+                <div *ngFor="let sistema of tejido.sistemas">
+                  {{ sistema.display }}
                 </div>
               </div>
             </div>
@@ -137,16 +149,17 @@
                   <!-- Formulario de edición -->
                   <div *ngIf="label.id === editingLabelId" class="label-edit-form">
                     <div class="form-content">
+                      <!-- Agregar selector de tag -->
                       <select class="tag-select" 
                               [(ngModel)]="newLabel.tag"
-                              name="tag"
-                              required>
-                        <option [ngValue]="null">Seleccione un tag</option>
+                              name="tag">
+                        <option [ngValue]="null">Sin etiquetar</option>
                         <option *ngFor="let tag of availableTags" 
                                 [ngValue]="tag.id">
                           {{tag.name}} ({{tag.public ? 'Público' : 'Privado'}})
                         </option>
                       </select>
+                      
                       <input type="text"
                              class="label-description"
                              [(ngModel)]="newLabel.nota"
@@ -163,7 +176,7 @@
                         <div class="action-buttons">
                           <button class="save-button" 
                                   (click)="saveLabel()"
-                                  [disabled]="!newLabel.tag || !newLabel.nota">
+                                  [disabled]="!newLabel.nota">
                             Guardar
                           </button>
                           <button class="cancel-button" 
@@ -174,6 +187,7 @@
                       </div>
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -337,7 +351,8 @@
       [capturaId]="imagenSeleccionada.id"
       [highlightedLabelId]="highlightedLabelId"
       [isTaggingMode]="isTaggingMode"
-      (labelCreated)="onLabelCreated($event)">
+      (labelCreated)="onLabelCreated($event)"
+      [availableTags]="availableTags">  <!-- Add this line -->
     </app-imagen-zoom>
   </section>
 </div>

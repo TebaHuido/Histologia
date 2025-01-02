@@ -5,6 +5,24 @@ import { catchError, switchMap } from 'rxjs/operators';
 import { Tejido, Muestra, Label, Tag, Profesor, Alumno } from './tejidos.mock';
 import { AuthService } from './auth.service';
 
+// Add interfaces at the file level, outside the class
+export interface UpdateMuestraRequest {
+  name: string;
+  public: boolean;
+  Categoria?: any[];
+  organo?: any[];
+  tincion?: any[];
+}
+
+export interface UpdateMuestraResponse {
+  id: number;
+  name: string;
+  public: boolean;
+  Categoria: any[];
+  organo: any[];
+  tincion: any[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,8 +45,31 @@ export class ApiService {
     };
   }
 
-  getTejidos(category: string): Observable<Tejido[]> {
-    return this.http.get<Tejido[]>(`${this.apiUrl}/tejidos/?category=${category}`, { withCredentials: true });
+  private getAuthHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    const csrfToken = this.authService.getCSRFToken();
+    return new HttpHeaders({
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token || ''}`,
+      'X-CSRFToken': csrfToken || ''
+    });
+  }
+
+  private getAuthOptions() {
+    return {
+      headers: this.getAuthHeaders(),
+      withCredentials: true
+    };
+  }
+
+  getTejidos(category: string = ''): Observable<Tejido[]> {
+    const url = `${this.apiUrl}/tejidos/${category ? `?category=${category}` : ''}`;
+    return this.http.get<Tejido[]>(url, { withCredentials: true }).pipe(
+      catchError(error => {
+        console.error('Error fetching tejidos:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   getFilters(): Observable<any> {
@@ -200,15 +241,15 @@ export class ApiService {
       .set('Authorization', `Bearer ${this.authService.getToken()}`)
       .set('X-CSRFToken', this.authService.getCSRFToken() || '');
 
-    // Actualizado para incluir el campo public
+    // Clean up the payload to match backend expectations
     const payload = {
-      nota: label.nota,
-      tag: typeof label.tag === 'string' ? parseInt(label.tag, 10) : label.tag,
-      coordenadas: label.coordenadas,
-      public: label.public // Añadido el campo public
+      nota: label.nota || '',
+      tag: label.tag !== undefined ? label.tag : null,  // Ensure null is sent when no tag
+      coordenadas: label.coordenadas || { x: 0, y: 0 },
+      public: label.public || false
     };
 
-    console.log('Sending label update with payload:', payload); // Para debugging
+    console.log('Sending API request with payload:', payload); // Debug log
 
     return this.http.put<Label>(
       `${this.apiUrl}/labels/${id}/`,
@@ -219,9 +260,9 @@ export class ApiService {
       }
     ).pipe(
       catchError(error => {
-        console.error('Error updating label:', error);
+        console.error('API Error:', error);
         return throwError(() => ({
-          error: error.error?.detail || 'Error al actualizar la etiqueta',
+          error: error.error?.detail || error.error || 'Error al actualizar la etiqueta',
           status: error.status
         }));
       })
@@ -254,7 +295,7 @@ export class ApiService {
   }
 
   getLotes(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/lotes/`, this.getOptions());
+    return this.http.get(`${this.apiUrl}/lotes/`, this.getAuthOptions());
   }
 
   getLoteById(id: number): Observable<any> {
@@ -262,22 +303,22 @@ export class ApiService {
   }
 
   createLote(lote: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/lotes/`, lote, this.getOptions());
+    return this.http.post(`${this.apiUrl}/lotes/`, lote, this.getAuthOptions());
   }
 
   updateLote(id: number, lote: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/lotes/${id}/`, lote, this.getOptions());
+    return this.http.put(`${this.apiUrl}/lotes/${id}/`, lote, this.getAuthOptions());
   }
 
   deleteLote(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/lotes/${id}/`, this.getOptions());
+    return this.http.delete(`${this.apiUrl}/lotes/${id}/`, this.getAuthOptions());
   }
 
   addMuestraToLote(loteId: number, muestraId: number): Observable<any> {
     return this.http.post(
       `${this.apiUrl}/lotes/${loteId}/add_muestra/`, 
       { muestra_id: muestraId }, 
-      this.getOptions()
+      this.getAuthOptions()
     );
   }
 
@@ -285,7 +326,7 @@ export class ApiService {
     return this.http.post(
       `${this.apiUrl}/lotes/${loteId}/remove_muestra/`, 
       { muestra_id: muestraId }, 
-      this.getOptions()
+      this.getAuthOptions()
     );
   }
 
@@ -308,6 +349,23 @@ export class ApiService {
           );
         }
         return of([]);
+      })
+    );
+  }
+
+  // Add the updateMuestra method inside the class
+  updateMuestra(id: number, data: UpdateMuestraRequest): Observable<UpdateMuestraResponse> {
+    return this.http.put<UpdateMuestraResponse>(
+      `${this.apiUrl}/muestras/${id}/`,
+      data,
+      {
+        headers: this.getHeaders(),
+        withCredentials: true
+      }
+    ).pipe(
+      catchError(error => {
+        console.error('Error updating muestra:', error);
+        return throwError(() => error);
       })
     );
   }

@@ -60,7 +60,6 @@ class OrganoSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 class CapturaSerializer(serializers.ModelSerializer):
-    #cd /usr/share/nginx/html
     image = serializers.SerializerMethodField()
 
     class Meta:
@@ -68,12 +67,33 @@ class CapturaSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image')  # Ajusta según tus necesidades
 
     def get_image(self, obj):
-        relative_url = obj.image.url
-        server_url = 'http://localhost:80'
-        full_url = f"{server_url}{relative_url}"
-        return full_url
+        return obj.image.url
 
 class MuestraSerializer(serializers.ModelSerializer):
+    imagenUrl = serializers.SerializerMethodField()
+    sistemas = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Muestra
+        fields = ['id', 'name', 'Categoria', 'organo', 'tincion', 'imagenUrl', 'sistemas']
+
+    def get_imagenUrl(self, obj):
+        captura = obj.captura_set.first()
+        if captura:
+            return captura.image.url
+        return None
+
+    def get_sistemas(self, obj):
+        sistemas = []
+        for organo in obj.organo.all():
+            for sistema in organo.sistema.all():
+                sistemas.append({
+                    'sistema': sistema.name,
+                    'organo': organo.name
+                })
+        return sistemas if sistemas else []
+
+class MuestraSerializer2(serializers.ModelSerializer):
     imagenUrl = serializers.SerializerMethodField()  # Para incluir la URL de la imagen
     categoria = serializers.ListField(
         child=serializers.CharField(max_length=100),
@@ -96,10 +116,12 @@ class MuestraSerializer(serializers.ModelSerializer):
         child=serializers.ImageField(),
         write_only=True  # Solo para crear
     )
+    capturas = CapturaSerializer(many=True, read_only=True)
+    sistemas = serializers.SerializerMethodField()
 
     class Meta:
         model = Muestra
-        fields = ['id', 'name', 'categoria', 'organo', 'sistema', 'tincion', 'images', 'imagenUrl']
+        fields = ['id', 'name', 'categoria', 'organo', 'sistema', 'tincion', 'images', 'imagenUrl', 'capturas', 'sistemas']
 
     def validate_categoria(self, value):
         categorias = []
@@ -192,11 +214,13 @@ class LoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lote
-        fields = ['id', 'name', 'cursos', 'muestras', 'cursos_details', 'muestras_details']
+        fields = '__all__'
 
 class AlumnoSerializer(serializers.ModelSerializer):
-    user = UserSerializer(required=False)  # Make user optional for updates
-    curso = serializers.PrimaryKeyRelatedField(many=True, queryset=Curso.objects.all())
+    curso = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Curso.objects.all()
+    )
 
     class Meta:
         model = Alumno
@@ -230,10 +254,11 @@ class MuestraSerializer2(serializers.ModelSerializer):
     capturas = serializers.SerializerMethodField()
     notas = serializers.SerializerMethodField()
     sistemas = serializers.SerializerMethodField()
+    public = serializers.BooleanField(default=False)  # Add this line
 
     class Meta:
         model = Muestra
-        fields = ['id', 'name', 'capturas', 'notas', 'sistemas']
+        fields = ['id', 'name', 'capturas', 'notas', 'sistemas', 'public']
 
     def get_capturas(self, obj):
         capturas = obj.captura_set.all()
@@ -248,8 +273,12 @@ class MuestraSerializer2(serializers.ModelSerializer):
         sistemas = []
         for organo in organos:
             for sistema in organo.sistema.all():
-                sistemas.append({'sistema': sistema.name, 'organo': organo.name})
-        return sistemas if sistemas else []
+                sistemas.append({
+                    'sistema': sistema.name,
+                    'organo': organo.name,
+                    'display': f"{sistema.name} - {organo.name}"  # Add a formatted display string
+                })
+        return sistemas
 
 class TincionSerializer(serializers.ModelSerializer):
     class Meta:

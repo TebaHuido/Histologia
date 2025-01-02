@@ -21,6 +21,15 @@ interface Lote {
   }[];
 }
 
+interface Muestra {
+  id: number;
+  name: string;
+  Categoria: Array<{ id: number; name: string; }>;
+  organo: Array<{ id: number; name: string; }>;
+  tincion: Array<{ id: number; name: string; }>;
+  imagenUrl?: string;
+}
+
 @Component({
   selector: 'app-lotes',
   standalone: true,
@@ -36,9 +45,11 @@ export class LotesComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
   cursos: any[] = [];
-  muestras: any[] = [];
+  muestras: Muestra[] = [];
   selectedMuestras: number[] = [];
   selectedCursos: number[] = [];
+  editSelectedMuestras: number[] = [];
+  editSelectedCursos: number[] = [];
   categorias: any[] = [];
   organos: any[] = [];
   sistemas: any[] = [];
@@ -54,7 +65,8 @@ export class LotesComponent implements OnInit {
     searchText: ''
   };
 
-  muestrasFiltradas: any[] = [];
+  muestrasFiltradas: Muestra[] = [];
+  muestrasFiltradas_edit: Muestra[] = []; // New array for edit mode
 
   constructor(private api: ApiService, public auth: AuthService) {}
 
@@ -89,9 +101,18 @@ export class LotesComponent implements OnInit {
   }
 
   loadMuestras(): void {
-    // TODO: Implementar getMuestras en ApiService
     this.api.getMuestras().subscribe({
-      next: (data) => this.muestras = data,
+      next: (data: any[]) => {
+        this.muestras = data.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          Categoria: m.Categoria || [],
+          organo: m.organo || [],
+          tincion: m.tincion || [],
+          imagenUrl: m.imagenUrl
+        }));
+        this.muestrasFiltradas = [...this.muestras];
+      },
       error: (error) => console.error('Error al cargar muestras:', error)
     });
   }
@@ -111,15 +132,15 @@ export class LotesComponent implements OnInit {
 
   aplicarFiltros(): void {
     this.muestrasFiltradas = this.muestras.filter(muestra => {
-      const matchesCategoria = !this.filtrosMuestra.categoria || 
+      const matchesCategoria = !this.filtrosMuestra.categoria ||
         muestra.Categoria.some((cat: any) => cat.id === this.filtrosMuestra.categoria);
-      const matchesOrgano = !this.filtrosMuestra.organo || 
+      const matchesOrgano = !this.filtrosMuestra.organo ||
         muestra.organo.some((org: any) => org.id === this.filtrosMuestra.organo);
-      const matchesSistema = !this.filtrosMuestra.sistema || 
+      const matchesSistema = !this.filtrosMuestra.sistema ||
         muestra.organo.some((org: any) => org.sistema.some((sis: any) => sis.id === this.filtrosMuestra.sistema));
-      const matchesTincion = !this.filtrosMuestra.tincion || 
+      const matchesTincion = !this.filtrosMuestra.tincion ||
         muestra.tincion.some((tin: any) => tin.id === this.filtrosMuestra.tincion);
-      const matchesSearch = !this.filtrosMuestra.searchText || 
+      const matchesSearch = !this.filtrosMuestra.searchText ||
         muestra.name.toLowerCase().includes(this.filtrosMuestra.searchText.toLowerCase());
 
       return matchesCategoria && matchesOrgano && matchesSistema && matchesTincion && matchesSearch;
@@ -186,8 +207,9 @@ export class LotesComponent implements OnInit {
   editLote(lote: Lote): void {
     this.selectedLote = { ...lote };
     this.isEditing = true;
-    this.selectedMuestras = lote.muestras || [];
-    this.selectedCursos = lote.cursos || [];
+    this.editSelectedMuestras = lote.muestras || [];
+    this.editSelectedCursos = lote.cursos || [];
+    this.muestrasFiltradas_edit = [...this.muestras]; // Initialize edit filtered list
   }
 
   updateLote(): void {
@@ -201,8 +223,8 @@ export class LotesComponent implements OnInit {
     this.isLoading = true;
     const loteData = {
       name: this.selectedLote.name,
-      cursos: this.selectedCursos || [],
-      muestras: this.selectedMuestras || []
+      cursos: this.editSelectedCursos || [],
+      muestras: this.editSelectedMuestras || []
     };
 
     this.api.updateLote(this.selectedLote.id, loteData).subscribe({
@@ -225,45 +247,44 @@ export class LotesComponent implements OnInit {
   cancelEdit(): void {
     this.selectedLote = null;
     this.isEditing = false;
-    this.selectedMuestras = [];
-    this.selectedCursos = [];
+    this.editSelectedMuestras = [];
+    this.editSelectedCursos = [];
+    this.muestrasFiltradas_edit = []; // Clear edit filtered list
   }
 
   toggleMuestra(muestraId: number): void {
-    if (!this.selectedLote) return;
-
-    const index = this.selectedMuestras.indexOf(muestraId);
-    if (index === -1) {
-      // Añadir muestra al lote
-      this.api.addMuestraToLote(this.selectedLote.id, muestraId).subscribe({
-        next: () => {
-          this.selectedMuestras.push(muestraId);
-        },
-        error: (error) => {
-          console.error('Error al añadir muestra:', error);
-        }
-      });
+    if (this.isEditing) {
+      const index = this.editSelectedMuestras.indexOf(muestraId);
+      if (index === -1) {
+        this.editSelectedMuestras.push(muestraId);
+      } else {
+        this.editSelectedMuestras.splice(index, 1);
+      }
     } else {
-      // Remover muestra del lote
-      this.api.removeMuestraFromLote(this.selectedLote.id, muestraId).subscribe({
-        next: () => {
-          this.selectedMuestras.splice(index, 1);
-        },
-        error: (error) => {
-          console.error('Error al remover muestra:', error);
-        }
-      });
+      const index = this.selectedMuestras.indexOf(muestraId);
+      if (index === -1) {
+        this.selectedMuestras.push(muestraId);
+      } else {
+        this.selectedMuestras.splice(index, 1);
+      }
     }
   }
 
   toggleCurso(cursoId: number): void {
-    if (!this.selectedLote) return;
-
-    const index = this.selectedCursos.indexOf(cursoId);
-    if (index === -1) {
-      this.selectedCursos.push(cursoId);
+    if (this.isEditing) {
+      const index = this.editSelectedCursos.indexOf(cursoId);
+      if (index === -1) {
+        this.editSelectedCursos.push(cursoId);
+      } else {
+        this.editSelectedCursos.splice(index, 1);
+      }
     } else {
-      this.selectedCursos.splice(index, 1);
+      const index = this.selectedCursos.indexOf(cursoId);
+      if (index === -1) {
+        this.selectedCursos.push(cursoId);
+      } else {
+        this.selectedCursos.splice(index, 1);
+      }
     }
   }
 

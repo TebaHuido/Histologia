@@ -1,13 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { NgFor, CommonModule } from '@angular/common'; // Import CommonModule
 import { FormsModule } from '@angular/forms'; // Import FormsModule
 import { ApiService } from '../services/api.service';
-import { Tejido, Label, Tag, Profesor, Alumno } from '../services/tejidos.mock';  // Remove Muestra from import
+import { Tejido, Label, Tag, Profesor, Alumno, Sistema } from '../services/tejidos.mock';  // Remove Muestra from import and add Sistema
 import { ActivatedRoute } from '@angular/router';
 import { NgxImageZoomModule } from 'ngx-image-zoom';
 import { ImagenZoomComponent } from '../imagen-zoom/imagen-zoom.component';
 import { AuthService } from '../services/auth.service';
 import { SharedModule } from '../shared/shared.module'; // Import SharedModule
+import { UpdateMuestraRequest, UpdateMuestraResponse } from '../services/api.service'; // Add these imports
 
 // Update interfaces for better type safety
 interface BaseNota {
@@ -38,7 +39,7 @@ interface LocalMuestra {  // Renamed from Muestra to avoid conflict
   name: string;
   capturas: Captura[];
   notas: NotaResponse[];  // Update this to use NotaResponse
-  sistemas: string[];
+  sistemas: Sistema[];  // Now properly typed
   public: boolean;  // Add this property
   Categoria: any[];  // Add this property
   organo: any[];  // Add this property
@@ -87,7 +88,7 @@ export class TejidoComponent implements OnInit {
   isEditingMuestra = false;
   editingMuestra: any = null;
 
-  constructor(private route: ActivatedRoute, private api: ApiService, public auth: AuthService) { }
+  constructor(private route: ActivatedRoute, private api: ApiService, public auth: AuthService, private cdr: ChangeDetectorRef) { }
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
@@ -105,21 +106,21 @@ export class TejidoComponent implements OnInit {
     this.errorMessage = '';
     this.api.getTejido(id).subscribe({
       next: (tejido: Tejido) => {
-        const muestra: LocalMuestra = {  // Updated type
+        const muestra: LocalMuestra = {
           id: tejido.id,
           name: tejido.name,
           capturas: tejido.capturas,
           notas: this.filterNotas(tejido.notas).map(nota => ({
             ...nota,
-            public: nota.public || false // Ensure public property exists
+            public: nota.public || false
           })),
-          sistemas: tejido.sistemas.map((s: any) => `${s.sistema} - ${s.organo}`),
-          public: tejido.public || false,  // Add this property
-          Categoria: tejido.Categoria || [],  // Add this property
-          organo: tejido.organo || [],  // Add this property
-          tincion: tejido.tincion || []  // Add this property
+          sistemas: tejido.sistemas,  // No need to map, using the Sistema interface
+          public: tejido.public || false,
+          Categoria: tejido.Categoria || [],
+          organo: tejido.organo || [],
+          tincion: tejido.tincion || []
         };
-        this.tejidosArray.push(muestra);
+        this.tejidosArray = [muestra];  // Replace instead of push
         if (muestra.capturas && muestra.capturas.length > 0) {
           this.imagenSeleccionada = muestra.capturas[0];  // Asignar la captura completa
           this.loadLabels();  // Cargar etiquetas para la captura seleccionada
@@ -389,16 +390,34 @@ export class TejidoComponent implements OnInit {
   }
 
   onLabelCreated(label: Label) {
-    label.visible = true; // Ensure the new label is visible by default
-    this.currentLabels = [...this.currentLabels, label];
+    // Ensure the label has the correct visibility and tag information
+    const newLabel = {
+      ...label,
+      visible: true,
+      tag: this.availableTags.find(t => t.id === label.tag) || label.tag
+    };
+
+    // Add to currentLabels
+    this.currentLabels = [...this.currentLabels, newLabel];
+
+    // Update initialLabels for the image-zoom component
+    this.initialLabels = [...this.currentLabels];
+
+    // Update grouped labels
+    this.updateGroupedLabels();
+
+    // Start editing the new label
     this.editingLabelId = label.id || null;
     this.newLabel = { ...label };
     this.selectedSection = 'labels';
 
+    // Load tags if not already loaded
     if (!this.availableTags.length) {
       this.loadTags();
     }
-    this.isTaggingMode = true; // Ensure tagging mode remains active
+
+    // Ensure changes are detected
+    this.cdr.detectChanges();
   }
 
   startEditingLabel(label: Label) {
@@ -412,41 +431,51 @@ export class TejidoComponent implements OnInit {
     this.editingLabelId = label.id || null;
     this.newLabel = {
       ...label,
-      tag: label.tag && typeof label.tag === 'object' ? label.tag.id : label.tag,
-      public: label.public || false // Asegurar que public tenga un valor booleano
+      // Safely handle tag access
+      tag: label.tag ? 
+        (typeof label.tag === 'object' ? label.tag?.id : label.tag) 
+        : null,
+      public: label.public || false,
+      nota: label.nota || '',
+      coordenadas: label.coordenadas
     };
     console.log('Started editing label:', this.newLabel);
   }
 
   saveLabel() {
     const user = this.auth.getUser();
-    if (!this.editingLabelId || !this.newLabel.tag) {
+    if (!this.editingLabelId) {
       console.warn('Missing required data for label update');
       return;
     }
 
     const isPublic = user.is_alumno ? false : !!this.newLabel.public;
 
+    // Ensure tag is properly handled
     const updateData: Partial<Label> = {
       nota: this.newLabel.nota || '',
-      tag: Number(this.newLabel.tag),
-      coordenadas: this.newLabel.coordenadas || { x: 0, y: 0 },
-      public: isPublic
+      public: isPublic,
+      coordenadas: this.newLabel.coordenadas,
+      tag: this.newLabel.tag !== undefined && this.newLabel.tag !== null ? 
+           Number(this.newLabel.tag) : 
+           null
     };
+
+    console.log('Sending update data:', updateData); // Debug log
 
     this.api.updateLabel(this.editingLabelId, updateData).subscribe({
       next: (updatedLabel) => {
-        console.log('Label updated successfully:', updatedLabel);
-        
+        console.log('Successfully updated label:', updatedLabel);
         // Actualizar la etiqueta en la lista
         this.currentLabels = this.currentLabels.map(label => {
           if (label.id === this.editingLabelId) {
             return {
+              ...label,
               ...updatedLabel,
               visible: true,
               is_owner: true,
               public: updatedLabel.public,
-              // Asegurar que se incluyan los detalles del tag
+              // Actualizar el tag con los detalles completos
               tag: this.availableTags.find(t => t.id === updatedLabel.tag) || updatedLabel.tag
             };
           }
@@ -462,7 +491,7 @@ export class TejidoComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error updating label:', error);
-        this.errorMessage = error.error || 'Error al actualizar la etiqueta';
+        this.errorMessage = error.error?.detail || error.error || 'Error al actualizar la etiqueta';
       }
     });
   }
@@ -680,8 +709,16 @@ export class TejidoComponent implements OnInit {
   saveMuestraChanges(): void {
     if (!this.tejidosArray[0] || !this.editingMuestra) return;
 
-    this.api.updateMuestra(this.tejidosArray[0].id, this.editingMuestra).subscribe({
-      next: (updatedMuestra) => {
+    const updateData: UpdateMuestraRequest = {
+      name: this.editingMuestra.name,
+      public: this.editingMuestra.public,
+      Categoria: this.editingMuestra.Categoria,
+      organo: this.editingMuestra.organo,
+      tincion: this.editingMuestra.tincion
+    };
+
+    this.api.updateMuestra(this.tejidosArray[0].id, updateData).subscribe({
+      next: (updatedMuestra: UpdateMuestraResponse) => {
         this.tejidosArray[0] = {
           ...this.tejidosArray[0],
           ...updatedMuestra
@@ -689,7 +726,7 @@ export class TejidoComponent implements OnInit {
         this.isEditingMuestra = false;
         this.editingMuestra = null;
       },
-      error: (error) => {
+      error: (error: Error) => {
         console.error('Error updating muestra:', error);
         this.errorMessage = 'Error al actualizar la muestra';
       }

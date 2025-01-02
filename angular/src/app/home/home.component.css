@@ -113,7 +113,9 @@ img {
     height: 100px;
     margin: auto;
     display: block;
+    object-fit: cover; /* Asegura que la imagen se ajuste al contenedor */
 }
+
 .filters{
     background-color: #f5f5f5;
     margin: auto;

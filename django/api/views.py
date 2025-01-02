@@ -84,12 +84,34 @@ class CapturaViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MuestraViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]  # Asegúrate de que solo los usuarios autenticados puedan acceder
-    queryset = Muestra.objects.all()
-    serializer_class = MuestraSerializer
+    permission_classes = [IsAuthenticated]
+    serializer_class = MuestraSerializer2  # Using the serializer with capturas, notas, sistemas
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_alumno:
+            # Obtener los cursos del alumno
+            cursos = user.alumno.curso.all()
+            # Obtener los lotes asociados a esos cursos
+            lotes = Lote.objects.filter(cursos__in=cursos).distinct()
+            # Obtener las muestras asociadas a esos lotes
+            queryset = Muestra.objects.filter(lotes_relacionados__in=lotes).distinct()
+        else:
+            queryset = Muestra.objects.all()
+        
+        category = self.request.query_params.get('category', None)
+        if category:
+            queryset = queryset.filter(Categoria__name=category)
+            
+        return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = self.get_serializer(data=request.data, context={'request': request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         self.perform_create(serializer)
@@ -99,13 +121,19 @@ class MuestraViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get', 'post'])
     def Filtrado(self, request):
+        user = self.request.user
         categories = request.query_params.getlist('category', [])
         organs = request.query_params.getlist('organ', [])
         systems = request.query_params.getlist('system', [])
         tincions = request.query_params.getlist('tincion', [])
         tags = request.query_params.getlist('tag', [])
 
-        muestras = Muestra.objects.all()
+        if user.is_alumno:
+            cursos = user.alumno.curso.all()
+            lotes = Lote.objects.filter(cursos__in=cursos).distinct()
+            muestras = Muestra.objects.filter(lotes_relacionados__in=lotes).distinct()
+        else:
+            muestras = Muestra.objects.all()
 
         if categories:
             muestras = muestras.filter(Categoria__name__in=categories)
@@ -118,7 +146,7 @@ class MuestraViewSet(viewsets.ModelViewSet):
         if tags:
             muestras = muestras.filter(notas__tags__name__in=tags)
 
-        serializer = MuestraSerializer(muestras.distinct(), many=True)
+        serializer = MuestraSerializer(muestras.distinct(), many=True, context={'request': request})
         return Response(serializer.data)
 
 # Función para listar capturas asociadas a una muestra específica
@@ -194,8 +222,26 @@ class OrganoViewSet(viewsets.ReadOnlyModelViewSet):
 
 # Vista alternativa para manejar muestras (solo lectura)
 class MuestraViewSet2(viewsets.ReadOnlyModelViewSet):
-    queryset = Muestra.objects.all()
     serializer_class = MuestraSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_alumno:
+            # Obtener los cursos del alumno
+            cursos = user.alumno.curso.all()
+            # Obtener los lotes asociados a esos cursos
+            lotes = Lote.objects.filter(cursos__in=cursos).distinct()
+            # Obtener las muestras asociadas a esos lotes
+            queryset = Muestra.objects.filter(lotes_relacionados__in=lotes).distinct()
+        else:
+            queryset = Muestra.objects.all()
+        
+        return queryset.distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
 
 # Vista para manejar lotes (solo lectura)
 class LoteViewSet(viewsets.ModelViewSet):

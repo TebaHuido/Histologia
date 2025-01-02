@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from .views import (
     LoginView, NotaViewSet, UploadXlsView, TagViewSet, 
-    LabelViewSet, MuestraViewSet
+    LabelViewSet, MuestraViewSet, MuestraViewSet2
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -21,6 +21,7 @@ router.register(r'alumnos', views.AlumnoViewSet, basename='alumnos')
 router.register(r'tinciones', views.TincionViewSet, basename='tinciones')
 router.register(r'tags', TagViewSet, basename='tags')
 router.register(r'labels', LabelViewSet, basename='labels')
+router.register(r'tejidos', MuestraViewSet2, basename='tejidos')  # Update this line
 
 urlpatterns = [
     path('filters/', views.FilterView.as_view(), name='filters'),
@@ -38,5 +39,6 @@ urlpatterns = [
     path('alumnos/<int:pk>/remove-from-curso/', 
          views.AlumnoViewSet.as_view({'delete': 'remove_from_curso'}), 
          name='alumno-remove-from-curso'),
+    path('tejidos/', views.MuestraViewSet2.as_view({'get': 'list'}), name='tejido-list'),  # Update this line
     path('', include(router.urls)),
 ]

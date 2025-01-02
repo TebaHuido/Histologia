@@ -18,13 +18,8 @@
     </app-filter>
     <app-filter 
       [label]="'Tinciones'" 
-      [allItems]="tinciones" 
+      [allItems]="tinciones"
       (filterChange)="updateSelectedFilters('tincion', $event)">
-    </app-filter>
-    <app-filter 
-      [label]="'Tags'" 
-      [allItems]="tags" 
-      (filterChange)="updateSelectedFilters('tag', $event)">
     </app-filter>
   </div>
   <section class="base">
@@ -38,12 +33,17 @@
     </div>
     <!-- Itera sobre cada sistema único -->
     <div *ngFor="let sistema of sistemasUnicos" class="tissue-group">
-      <p class="tissue">{{ sistema }}</p>
+      <p class="tissue">Sistema {{ sistema }}</p>
       <!-- Filtra las muestras por el sistema actual y muestra todas las muestras -->
       <div class="orden">
         <div *ngFor="let muestra of getMuestrasPorSistema(sistema)" class="orden-content">
-          <img (click)="drawPoint($event)" [src]="'http://localhost:80' + muestra.imagenUrl">
-          <a [href]="'http://localhost:80/tejido/' + muestra.id" class="list-group-item">
+          <img 
+            (click)="drawPoint($event)" 
+            [src]="getImageUrl(muestra)"
+            [alt]="muestra.name"
+            (error)="handleImageError($event)"
+          >
+          <a [routerLink]="['/tejido', muestra.id]" class="list-group-item">
             {{ muestra.name }}
           </a>
         </div>
@@ -54,8 +54,13 @@
       <p class="tissue">Sin sistema</p>
       <div class="orden">
         <div *ngFor="let muestra of getMuestrasSinSistema()" class="orden-content">
-          <img (click)="drawPoint($event)" [src]="'http://localhost:80'+muestra.imagenUrl">
-          <a [href]="'http://localhost:80/tejido/' + muestra.id" class="list-group-item">
+          <img 
+            (click)="drawPoint($event)" 
+            [src]="getImageUrl(muestra)"
+            [alt]="muestra.name"
+            (error)="handleImageError($event)"
+          >
+          <a [routerLink]="['/tejido', muestra.id]" class="list-group-item">
             {{ muestra.name }}
           </a>
         </div>
