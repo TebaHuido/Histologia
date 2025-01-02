@@ -4,6 +4,7 @@ import { Tejido, Categorias } from '../services/tejidos.mock';
 import { NgFor, CommonModule } from '@angular/common';
 import { FilterComponent } from '../filter/filter.component';
 import { AuthService } from '../services/auth.service';
+import { Router } from '@angular/router';  // Agregar esta importación
 
 interface Item {
   nombre: string;
@@ -39,39 +40,23 @@ export class HomeComponent implements OnInit {
     tag: []
   };
 
-  constructor(private api: ApiService, private authService: AuthService) {}
+  constructor(
+    private api: ApiService, 
+    public authService: AuthService,  // Change from private to public
+    private router: Router  // Agregar Router al constructor
+  ) {}
 
   ngOnInit(): void {
-    this.loadData();
+    // Verificar autenticación antes de hacer las llamadas
+    if (!this.authService.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.loadFilters();
+    this.loadTejidos(); // Removemos el parámetro 'all' ya que no se usa
   }
 
-  private loadData(): void {
-
-    this.api.getTejidos('all',).subscribe({
-      next: (tejidos: Tejido[]) => {
-        this.listaTejidos_all = tejidos;
-        this.listaTejidos_show = tejidos;
-        this.filteredTejidosItems = tejidos.map(te => ({ nombre: te.name }));
-        this.obtenerSistemasUnicos();
-      },
-      error: err => {
-        if (err.status === 403 && err.error.code === 'token_not_valid') {
-          this.authService.refreshToken().subscribe({
-            next: (response: any) => {
-              this.authService.setToken(response.access);
-              this.loadData();
-            },
-            error: refreshErr => {
-              console.error('Error al refrescar el token:', refreshErr);
-              this.authService.logout();
-            }
-          });
-        } else {
-          console.error('Error al obtener todos los tejidos:', err);
-        }
-      }
-    });
-
+  loadFilters(): void {
     this.api.getFilters().subscribe({
       next: (data) => {
         this.categorias = this.transformDataToItems(data.categorias);
@@ -80,23 +65,52 @@ export class HomeComponent implements OnInit {
         this.tinciones = this.transformDataToItems(data.tinciones);
         this.tags = this.transformDataToItems(data.tags);
       },
-      error: err => {
-        if (err.status === 403 && err.error.code === 'token_not_valid') {
-          this.authService.refreshToken().subscribe({
-            next: (response: any) => {
-              this.authService.setToken(response.access);
-              this.loadData();
-            },
-            error: refreshErr => {
-              console.error('Error al refrescar el token:', refreshErr);
-              this.authService.logout();
-            }
-          });
-        } else {
-          console.error('Error al obtener filtros:', err);
+      error: (error) => {
+        console.error('Error al obtener filtros:', error);
+        if (error.status === 403) {
+          this.authService.logout(); // Redirigir al login si no está autenticado
         }
       }
     });
+  }
+
+  loadTejidos(): void {
+    this.api.getTejidos('').subscribe({
+      next: (data) => {
+        // Add null check and filter out null values
+        const validData = data?.filter(item => item !== null) || [];
+        if (validData.length === 0) {
+          this.handleNoMuestras();
+        } else {
+          this.listaTejidos_all = validData;
+          this.listaTejidos_show = validData;
+          this.filteredTejidosItems = validData
+            .filter(te => te && te.name)  // Add null check
+            .map(te => ({ nombre: te.name }));
+          this.obtenerSistemasUnicos();
+        }
+      },
+      error: (error) => {
+        console.error('Error al obtener los tejidos:', error);
+        if (error.status === 403) {
+          this.authService.logout();
+        } else {
+          this.handleNoMuestras();
+        }
+      }
+    });
+  }
+
+  private handleNoMuestras(): void {
+    this.listaTejidos_all = [];
+    this.listaTejidos_show = [];
+    this.filteredTejidosItems = [];
+    this.sistemasUnicos = [];
+    if (this.authService.isAlumno()) {
+      alert('No tienes acceso a ninguna muestra. Contacta a tu profesor para que te asigne a un curso con muestras.');
+    } else {
+      alert('No hay muestras disponibles en el sistema.');
+    }
   }
 
   private transformDataToItems(data: any[]): Item[] {
@@ -123,13 +137,19 @@ export class HomeComponent implements OnInit {
 
   obtenerSistemasUnicos() {
     const sistemasSet = new Set<string>();
-    this.listaTejidos_show.forEach(tejido => {
-      if (tejido.sistemas && tejido.sistemas.length > 0) {
-        tejido.sistemas.forEach(sistema => sistemasSet.add(sistema));
-      }
-    });
+    this.listaTejidos_show
+      .filter(tejido => tejido !== null)  // Add null check
+      .forEach(tejido => {
+        if (Array.isArray(tejido.sistemas) && tejido.sistemas.length > 0) {
+          tejido.sistemas
+            .filter(sistema => sistema)  // Filter out null/undefined values
+            .forEach(sistema => sistemasSet.add(sistema));
+        }
+      });
     this.sistemasUnicos = Array.from(sistemasSet);
-    this.sistemasUnicosFormateados = this.sistemasUnicos.map(sistema => ({ nombre: sistema }));
+    this.sistemasUnicosFormateados = this.sistemasUnicos
+      .filter(sistema => sistema)  // Filter out null values
+      .map(sistema => ({ nombre: sistema }));
   }
 
   selectCategory(category: string) {
@@ -155,11 +175,22 @@ export class HomeComponent implements OnInit {
   }
 
   getMuestrasPorSistema(sistema: string): Tejido[] {
-    return this.listaTejidos_show.filter(muestra => muestra.sistemas.includes(sistema));
+    return this.listaTejidos_show
+      .filter(muestra => muestra !== null)  // Add null check
+      .filter(muestra => 
+        Array.isArray(muestra.sistemas) && 
+        muestra.sistemas.includes(sistema)
+      );
   }
 
   getMuestrasSinSistema(): Tejido[] {
-    return this.listaTejidos_show.filter(muestra => !muestra.sistemas || muestra.sistemas.length === 0);
+    return this.listaTejidos_show
+      .filter(muestra => muestra !== null)  // Add null check
+      .filter(muestra => 
+        !Array.isArray(muestra.sistemas) || 
+        muestra.sistemas.length === 0 ||
+        muestra.sistemas.every(sistema => !sistema)
+      );
   }
 
   updateNota(id: number, nota: any): void {

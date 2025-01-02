@@ -1,0 +1,202 @@
+<div class="lotes-container">
+  <h2>Gestión de Lotes</h2>
+
+  <!-- Formulario de creación -->
+  <div class="create-form" *ngIf="auth.isProfesor()">
+    <h3>Crear Nuevo Lote</h3>
+    <div class="form-group">
+      <label for="name">Nombre:</label>
+      <input 
+        type="text" 
+        id="name" 
+        [(ngModel)]="newLote.name" 
+        placeholder="Nombre del lote"
+      >
+    </div>
+
+    <div class="form-group">
+      <label>Cursos:</label>
+      <div class="cursos-list">
+        <div *ngFor="let curso of cursos" class="curso-item">
+          <input 
+            type="checkbox" 
+            [id]="'curso-' + curso.id"
+            [checked]="selectedCursos.includes(curso.id)"
+            (change)="toggleCurso(curso.id)"
+          >
+          <label [for]="'curso-' + curso.id">
+            {{curso.asignatura}} - {{curso.anio}} ({{curso.grupo}})
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Muestras:</label>
+      <div class="filtros-container">
+        <div class="filtros-header">
+          <input 
+            type="text" 
+            [(ngModel)]="filtrosMuestra.searchText"
+            placeholder="Buscar muestra..."
+            (input)="aplicarFiltros()"
+          >
+          <button class="reset-btn" (click)="resetFiltros()">Reset</button>
+        </div>
+        
+        <div class="filtros-grid">
+          <select [(ngModel)]="filtrosMuestra.categoria" (change)="aplicarFiltros()">
+            <option value="">Todas las categorías</option>
+            <option *ngFor="let cat of categorias" [value]="cat.id">{{cat.name}}</option>
+          </select>
+
+          <select [(ngModel)]="filtrosMuestra.sistema" (change)="aplicarFiltros()">
+            <option value="">Todos los sistemas</option>
+            <option *ngFor="let sis of sistemas" [value]="sis.id">{{sis.name}}</option>
+          </select>
+
+          <select [(ngModel)]="filtrosMuestra.organo" (change)="aplicarFiltros()">
+            <option value="">Todos los órganos</option>
+            <option *ngFor="let org of organos" [value]="org.id">{{org.name}}</option>
+          </select>
+
+          <select [(ngModel)]="filtrosMuestra.tincion" (change)="aplicarFiltros()">
+            <option value="">Todas las tinciones</option>
+            <option *ngFor="let tin of tinciones" [value]="tin.id">{{tin.name}}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="muestras-list">
+        <div *ngFor="let muestra of muestrasFiltradas" class="muestra-item">
+          <input 
+            type="checkbox" 
+            [id]="'muestra-' + muestra.id"
+            [checked]="selectedMuestras.includes(muestra.id)"
+            (change)="toggleMuestra(muestra.id)"
+          >
+          <label [for]="'muestra-' + muestra.id">
+            <strong>{{muestra.name}}</strong>
+            <span class="muestra-details">
+              {{muestra.Categoria[0]?.name || 'Sin categoría'}} | 
+              {{muestra.organo[0]?.name || 'Sin órgano'}}
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <button (click)="saveLote()" [disabled]="isLoading || !newLote.name">
+      {{isLoading ? 'Guardando...' : 'Crear Lote'}}
+    </button>
+
+    <div class="error-message" *ngIf="errorMessage">
+      {{errorMessage}}
+    </div>
+  </div>
+
+  <!-- Lista de lotes -->
+  <div class="lotes-list">
+    <h3>Lotes Existentes</h3>
+    <div class="loading" *ngIf="isLoading">Cargando...</div>
+    
+    <table *ngIf="!isLoading && lotes.length > 0">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Cursos</th>
+          <th>Muestras</th>
+          <th *ngIf="auth.isProfesor()">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let lote of lotes">
+          <td>{{lote.name}}</td>
+          <td>
+            <div class="curso-list">
+              <div *ngFor="let curso of lote.cursos_details || []">
+                {{curso.asignatura}} - {{curso.anio}} ({{curso.grupo}})
+              </div>
+              <div *ngIf="!(lote.cursos_details?.length)">Sin cursos</div>
+            </div>
+          </td>
+          <td>
+            <div class="muestra-list">
+              <div *ngFor="let muestra of lote.muestras_details || []">
+                {{muestra.name}}
+              </div>
+              <div *ngIf="!(lote.muestras_details?.length)">Sin muestras</div>
+            </div>
+          </td>
+          <td *ngIf="auth.isProfesor()">
+            <button class="edit-btn" (click)="editLote(lote)">
+              Editar
+            </button>
+            <button class="delete-btn" (click)="deleteLote(lote.id)">
+              Eliminar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Modal de edición -->
+    <div class="modal" *ngIf="isEditing && selectedLote">
+      <div class="modal-content">
+        <h3>Editar Lote</h3>
+        
+        <div class="form-group">
+          <label for="edit-name">Nombre:</label>
+          <input 
+            type="text" 
+            id="edit-name" 
+            [(ngModel)]="selectedLote.name"
+          >
+        </div>
+
+        <div class="form-group">
+          <label>Cursos:</label>
+          <div class="cursos-list">
+            <div *ngFor="let curso of cursos" class="curso-item">
+              <input 
+                type="checkbox" 
+                [id]="'edit-curso-' + curso.id"
+                [checked]="selectedCursos.includes(curso.id)"
+                (change)="toggleCurso(curso.id)"
+              >
+              <label [for]="'edit-curso-' + curso.id">
+                {{curso.asignatura}} - {{curso.anio}} ({{curso.grupo}})
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Muestras:</label>
+          <div class="muestras-list">
+            <div *ngFor="let muestra of muestras" class="muestra-item">
+              <input 
+                type="checkbox" 
+                [id]="'muestra-' + muestra.id"
+                [checked]="selectedMuestras.includes(muestra.id)"
+                (change)="toggleMuestra(muestra.id)"
+              >
+              <label [for]="'muestra-' + muestra.id">{{muestra.name}}</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button (click)="updateLote()" [disabled]="isLoading || !selectedLote || !selectedLote.name">
+            {{isLoading ? 'Guardando...' : 'Guardar cambios'}}
+          </button>
+          <button class="cancel-btn" (click)="cancelEdit()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="no-data" *ngIf="!isLoading && lotes.length === 0">
+      No hay lotes disponibles.
+    </div>
+  </div>
+</div>

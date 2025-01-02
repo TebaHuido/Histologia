@@ -104,7 +104,9 @@ export class AuthService {
     const token = this.getToken();
     const csrfToken = this.getCSRFToken();
     
-    let headers = new HttpHeaders();
+    let headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
 
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);
@@ -114,7 +116,21 @@ export class AuthService {
       headers = headers.set('X-CSRFToken', csrfToken);
     }
 
-    return headers.set('Content-Type', 'application/json');
+    return headers;
+  }
+
+  isAuthenticated(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+    // Opcional: verificar si el token está expirado
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp > Date.now() / 1000;
+    } catch {
+      return false;
+    }
   }
 
   private getCookie(name: string): string | null {
@@ -126,12 +142,20 @@ export class AuthService {
     return null;
   }
 
+  handleAuthError(error: any): void {
+    if (error.status === 401 || 
+        (error.status === 403 && error.error?.code === 'token_not_valid')) {
+      console.log('Token expired or invalid, logging out...');
+      this.logout();
+    }
+  }
+
   refreshToken(): Observable<any> {
     const refreshToken = this.getRefreshToken();
     
     if (!refreshToken) {
       this.logout();
-      return throwError('No refresh token available');
+      return throwError(() => new Error('No refresh token available'));
     }
 
     return this.http.post(
@@ -143,9 +167,8 @@ export class AuthService {
         this.setToken(response.access);
       }),
       catchError((error) => {
-        console.error('Error refreshing token:', error);
-        this.logout();
-        return throwError(error);
+        this.handleAuthError(error);
+        return throwError(() => error);
       })
     );
   }
@@ -153,5 +176,10 @@ export class AuthService {
   isProfesor(): boolean {
     const user = this.getUser();
     return user ? user.is_profesor : false;
+  }
+
+  isAlumno(): boolean {
+    const user = this.getUser();
+    return user && user.is_alumno === true;
   }
 }

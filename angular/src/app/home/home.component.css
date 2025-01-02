@@ -125,3 +125,18 @@ img {
     width: 100%;
     min-width: 175px;
 }
+
+.no-muestras {
+    text-align: center;
+    padding: 20px;
+    margin: 20px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+}
+
+.no-muestras p {
+    color: #6c757d;
+    font-size: 1.1em;
+    margin: 0;
+}

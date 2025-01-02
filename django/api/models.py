@@ -130,16 +130,16 @@ class Tag(models.Model):
 class Muestra(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nombre")
     Categoria = models.ManyToManyField(Categoria)
-    curso = models.ManyToManyField(Curso, through='Lote')
     organo = models.ManyToManyField(Organo, blank=True)
     tincion = models.ManyToManyField('Tincion', blank=True)
+    
     def __str__(self):
         return f"Muestra: {self.name}"
 
 class Lote(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nombre")
-    curso = models.ForeignKey(Curso, models.SET_NULL, null=True, blank=True)
-    muestra = models.ForeignKey(Muestra, models.SET_NULL, null=True, blank=True)
+    cursos = models.ManyToManyField(Curso, related_name='lotes', blank=True)
+    muestras = models.ManyToManyField(Muestra, related_name='lotes_relacionados', blank=True)
 
     def __str__(self):
         return f"Lote: {self.name}"

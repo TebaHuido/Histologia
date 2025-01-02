@@ -64,10 +64,17 @@ footer {
     color: #fff;
     padding: 10px;
     text-align: center;
+    height: 50px;
+    margin-top: 20px;
 }
 
 footer h3 {
     margin: 0;
     font-size: 16px;
     font-weight: bold;
+}
+
+.router-outlet {
+  min-height: calc(100vh - 140px); /* Ajusta según el tamaño de tu header y footer */
+  padding-bottom: 60px; /* Espacio para el footer */
 }

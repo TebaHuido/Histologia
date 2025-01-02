@@ -198,9 +198,61 @@ class MuestraViewSet2(viewsets.ReadOnlyModelViewSet):
     serializer_class = MuestraSerializer
 
 # Vista para manejar lotes (solo lectura)
-class LoteViewSet(viewsets.ReadOnlyModelViewSet):
+class LoteViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsProfesorOrReadOnly]
     queryset = Lote.objects.all()
     serializer_class = LoteSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        curso_id = self.request.query_params.get('curso')
+        if curso_id:
+            queryset = queryset.filter(curso_id=curso_id)
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def add_muestra(self, request, pk=None):
+        lote = self.get_object()
+        muestra_id = request.data.get('muestra_id')
+        try:
+            muestra = Muestra.objects.get(id=muestra_id)
+            lote.muestras.add(muestra)
+            return Response({'status': 'muestra added'})
+        except Muestra.DoesNotExist:
+            return Response({'error': 'muestra not found'}, status=404)
+
+    @action(detail=True, methods=['post'])
+    def remove_muestra(self, request, pk=None):
+        lote = self.get_object()
+        muestra_id = request.data.get('muestra_id')
+        try:
+            muestra = Muestra.objects.get(id=muestra_id)
+            lote.muestras.remove(muestra)
+            return Response({'status': 'muestra removed'})
+        except Muestra.DoesNotExist:
+            return Response({'error': 'muestra not found'}, status=404)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        cursos = self.request.data.get('cursos', [])
+        muestras = self.request.data.get('muestras', [])
+        
+        # Solo establecer las relaciones si se proporcionan los datos
+        if cursos:
+            instance.cursos.set(cursos)
+        if muestras:
+            instance.muestras.set(muestras)
+    
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        cursos = self.request.data.get('cursos', None)
+        muestras = self.request.data.get('muestras', None)
+        
+        # Solo actualizar las relaciones si se proporcionan los datos
+        if cursos is not None:
+            instance.cursos.set(cursos)
+        if muestras is not None:
+            instance.muestras.set(muestras)
 
 # Vista para manejar alumnos (solo lectura)
 class AlumnoViewSet(viewsets.ReadOnlyModelViewSet):

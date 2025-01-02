@@ -655,3 +655,198 @@ app-imagen-zoom {
   font-size: 0.85em;
   white-space: nowrap;
 }
+
+/* ...existing code... */
+.tag-group {
+  margin: 10px 0;
+}
+
+.tag-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.tag-header h4 {
+  margin: 0;
+  font-size: 0.9em;
+  color: #495057;
+  flex-grow: 1;
+}
+
+.collapse-button, 
+.visibility-toggle {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+.collapse-button:hover, 
+.visibility-toggle:hover {
+  color: #24407E;
+  background: none;
+}
+
+.label-count {
+  font-size: 0.8em;
+  color: #6c757d;
+}
+
+.tag-content {
+  padding-left: 20px;
+}
+
+.tag-content.collapsed {
+  display: none;
+}
+
+/* Mantener los estilos existentes de las etiquetas */
+.label-item {
+  padding: 10px;
+  margin: 5px 0;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #dee2e6;
+  transition: transform 0.2s;
+}
+
+/* ...rest of existing label styles... */
+
+.tag-group {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.tag-group h4 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1rem;
+}
+
+.labels-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.label-item.highlighted {
+  background-color: #fff3cd;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #dc3545;
+}
+
+.delete-btn:hover {
+  color: #c82333;
+}
+
+/* ...existing code... */
+.note-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-author {
+  font-size: 0.8em;
+  color: #666;
+  font-style: italic;
+}
+/* ...existing code... */
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.notes-header h3 {
+  margin: 0;
+}
+
+.notes-header .add-note-button {
+  margin: 0;
+  padding: 8px 16px;
+  width: auto;
+}
+
+/* ...existing code... */
+
+.muestra-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.edit-muestra-button {
+  background-color: #24407E;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+}
+
+.muestra-edit-form {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.muestra-edit-form .form-group {
+  margin-bottom: 15px;
+}
+
+.muestra-edit-form label {
+  display: block;
+  margin-bottom: 5px;
+  color: #495057;
+}
+
+.muestra-edit-form input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+}
+
+.muestra-info {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  margin-bottom: 10px;
+}
+
+.info-item strong {
+  color: #495057;
+  margin-right: 5px;
+}

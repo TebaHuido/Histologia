@@ -15,6 +15,7 @@ import { inject } from '@angular/core';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   
+  // Don't intercept auth-related requests
   if (req.url.includes('/login/') || 
       req.url.includes('/token/refresh/') || 
       req.url.includes('/csrf/')) {
@@ -24,19 +25,36 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = authService.getToken();
   const csrfToken = authService.getCSRFToken();
 
-  let newReq = req;
+  // Clone the request and add auth headers
+  const authReq = req.clone({
+    headers: req.headers
+      .set('Authorization', `Bearer ${token || ''}`)
+      .set('X-CSRFToken', csrfToken || '')
+      .set('Content-Type', 'application/json'),
+    withCredentials: true
+  });
 
-  if (token) {
-    newReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`,
-        ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-      },
-      withCredentials: true
-    });
-  }
-
-  return next(newReq);
+  return next(authReq).pipe(
+    catchError(error => {
+      if (error.status === 403 && error.error?.code === 'token_not_valid') {
+        return authService.refreshToken().pipe(
+          switchMap(() => {
+            // Retry the request with new token
+            const newToken = authService.getToken();
+            const newReq = req.clone({
+              headers: req.headers
+                .set('Authorization', `Bearer ${newToken}`)
+                .set('X-CSRFToken', authService.getCSRFToken() || '')
+                .set('Content-Type', 'application/json'),
+              withCredentials: true
+            });
+            return next(newReq);
+          })
+        );
+      }
+      return throwError(() => error);
+    })
+  );
 };
 
 @Injectable()

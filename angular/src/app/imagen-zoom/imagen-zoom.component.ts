@@ -35,7 +35,19 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
   }
 
-  @Input() isTaggingMode: boolean = false; // Add this input
+  @Input() set isTaggingMode(value: boolean) {
+    this._isTaggingMode = value;
+    if (!value) {
+      // Limpiar etiquetas temporales y resaltados cuando se desactiva el modo
+      this.labels = this.labels.filter(label => !label.isTemporary);
+      this.clearHighlights();
+    }
+    this.cdr.detectChanges();
+  }
+  get isTaggingMode(): boolean {
+    return this._isTaggingMode;
+  }
+  private _isTaggingMode = false;
 
   scale: number = 1;
   labels: Label[] = [];
@@ -282,35 +294,53 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
   }
 
   onImageClick(event: MouseEvent): void {
-    if (!this.isTaggingMode || !this.capturaId || !this.availableTags.length) return;
+    if (!this.isTaggingMode || !this.capturaId || !this.selectedTag === undefined) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
 
     const rect = this.imageContainer.nativeElement.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
+    const x = (event.clientX - rect.left - this.offsetX) / this.scale;
+    const y = (event.clientY - rect.top - this.offsetY) / this.scale;
 
-    const x = (clickX + this.offsetX) / this.scale;
-    const y = (clickY + this.offsetY) / this.scale;
+    // Remove any temporary labels first
+    this.labels = this.labels.filter(label => !label.isTemporary);
 
-    // Create new label
     const newLabel: Partial<Label> = {
       nota: 'Nueva etiqueta',
-      tag: this.selectedTag!, // Usar solo el ID del tag
+      tag: this.selectedTag!,
       coordenadas: { x, y },
       captura: this.capturaId,
-      visible: true // Ensure the new label is visible by default
+      visible: true
     };
 
-    // Save label through API
-    this.authService.refreshToken().pipe(
-      switchMap(() => this.apiService.createLabel(newLabel))
-    ).subscribe(
+    this.apiService.createLabel(newLabel).subscribe(
       (createdLabel: Label) => {
-        createdLabel.visible = true; // Ensure the new label is visible by default
-        this.labels.push(createdLabel);
+        this.labels.push({
+          ...createdLabel,
+          visible: true,
+          highlighted: false
+        });
         this.labelCreated.emit(createdLabel);
         this.cdr.detectChanges();
       },
       error => console.error('Error creating label:', error)
+    );
+  }
+
+  deleteLabel(labelId: number): void {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta etiqueta?')) {
+      return;
+    }
+
+    this.apiService.deleteLabel(labelId).subscribe(
+      () => {
+        this.labels = this.labels.filter(label => label.id !== labelId);
+        this.cdr.detectChanges();
+      },
+      error => console.error('Error deleting label:', error)
     );
   }
 
@@ -408,7 +438,7 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
       return label.tag.name;
     }
     const tagObject = this.availableTags.find(t => t.id === label.tag);
-    return tagObject ? tagObject.name : 'Unknown';
+    return tagObject ? tagObject.name : 'Sin etiquetar'; // Cambiar el texto aquí
   }
 
   private addTemporaryLabel(x: number, y: number): void {
@@ -422,6 +452,14 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
       public: false
     };
     this.labels.push(temporaryLabel);
+    this.cdr.detectChanges();
+  }
+
+  clearHighlights(): void {
+    this.labels = this.labels.map(label => ({
+      ...label,
+      highlighted: false
+    }));
     this.cdr.detectChanges();
   }
 }

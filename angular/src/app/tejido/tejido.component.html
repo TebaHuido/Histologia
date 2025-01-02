@@ -15,6 +15,55 @@
 
           <!-- Sección de Información -->
           <div *ngIf="selectedSection === 'info' && !selectedNota" class="section">
+            <!-- Botón de edición para profesores -->
+            <div class="muestra-header">
+              <h3>Información de la Muestra</h3>
+              <button *ngIf="auth.getUser()?.is_profesor && !isEditingMuestra" 
+                      (click)="startEditingMuestra()"
+                      class="edit-muestra-button">
+                Editar Muestra
+              </button>
+            </div>
+
+            <!-- Vista de edición -->
+            <div *ngIf="isEditingMuestra && editingMuestra" class="muestra-edit-form">
+              <form (ngSubmit)="saveMuestraChanges()">
+                <div class="form-group">
+                  <label for="muestraName">Nombre:</label>
+                  <input id="muestraName" 
+                         type="text" 
+                         [(ngModel)]="editingMuestra.name" 
+                         name="name" 
+                         required>
+                </div>
+
+                <div class="form-group">
+                  <div class="visibility-toggle">
+                    <input type="checkbox" 
+                           id="muestraPublic" 
+                           [(ngModel)]="editingMuestra.public" 
+                           name="public">
+                    <label for="muestraPublic">Muestra Pública</label>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="button" (click)="cancelMuestraEdit()">Cancelar</button>
+                  <button type="submit">Guardar Cambios</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Vista normal -->
+            <div *ngIf="!isEditingMuestra && tejidosArray[0]" class="muestra-info">
+              <div class="info-item">
+                <strong>Nombre:</strong> {{tejidosArray[0].name}}
+              </div>
+              <div class="info-item">
+                <strong>Estado:</strong> {{tejidosArray[0].public ? 'Público' : 'Privado'}}
+              </div>
+            </div>
+
             <h3>Imágenes</h3>
             <div class="list-group">
               <div class="list-group-item" *ngFor="let captura of tejidosArray[0]?.capturas" (click)="seleccionarImagen(captura)">
@@ -38,88 +87,96 @@
               {{ isTaggingMode ? 'Finalizar etiquetado' : 'Agregar etiqueta' }}
             </button>
             
-            <!-- Labels list -->
-            <div class="labels-list">
-              <div *ngFor="let label of currentLabels" 
-                   class="label-item"
-                   [class.editing]="label.id === editingLabelId"
-                   [class.highlighted]="label === highlightedLabel"
-                   [class.public]="label.public"
-                   [class.own]="label.is_owner"
-                   [class.disabled]="!label.visible"
-                   (mouseenter)="highlightLabel(label)"
-                   (mouseleave)="unhighlightLabel()">
-                <!-- Si no está en modo edición -->
-                <div *ngIf="label.id !== editingLabelId" 
-                     class="label-container">
-                  <div class="label-toggle">
-                    <input type="checkbox"
-                           [checked]="label.visible"
-                           (change)="toggleLabelVisibility(label)"
-                           (click)="$event.stopPropagation()">
-                  </div>
-                  <div class="label-content"
-                       (click)="label.is_owner ? startEditingLabel(label) : null"
-                       [class.readonly]="!label.is_owner">
-                    <span class="label-tag">
-                      {{getLabelTagName(label)}}
+            <!-- Grupos de etiquetas -->
+            <div *ngFor="let tagName of objectKeys(groupedLabels)" class="tag-group">
+              <div class="tag-header">
+                <button class="collapse-button" (click)="toggleGroupCollapse(tagName)">
+                  {{ groupedLabels[tagName].isCollapsed ? '►' : '▼' }}
+                </button>
+                <h4>{{ tagName }}</h4>
+                <button class="visibility-toggle" (click)="toggleGroupVisibility(tagName)">
+                  {{ groupedLabels[tagName].isVisible ? '👁️' : '👁️‍🗨️' }}
+                </button>
+                <span class="label-count">({{ groupedLabels[tagName].labels.length }})</span>
+              </div>
+              
+              <div class="tag-content" [class.collapsed]="groupedLabels[tagName].isCollapsed">
+                <div *ngFor="let label of groupedLabels[tagName].labels" 
+                     class="label-item"
+                     [class.editing]="label.id === editingLabelId"
+                     [class.highlighted]="label === highlightedLabel"
+                     [class.public]="label.public"
+                     [class.own]="label.is_owner"
+                     [class.disabled]="!label.visible"
+                     (mouseenter)="highlightLabel(label)"
+                     (mouseleave)="unhighlightLabel()">
+                  <!-- Vista normal -->
+                  <div *ngIf="label.id !== editingLabelId" class="label-container">
+                    <div class="label-toggle">
+                      <input type="checkbox"
+                             [checked]="label.visible"
+                             (change)="toggleLabelVisibility(label)"
+                             (click)="$event.stopPropagation()">
+                    </div>
+                    <div class="label-content" 
+                         (click)="startEditingLabel(label)"
+                         [class.readonly]="!label.is_owner">
+                      <span class="label-note">{{label.nota || 'Sin descripción'}}</span>
+                      <span class="label-creator" *ngIf="!label.is_owner">
+                        por {{label.creator_name}}
+                      </span>
                       <span class="label-visibility">
                         {{label.public ? '(Público)' : '(Privado)'}}
                       </span>
-                    </span>
-                    <span class="label-note">{{label.nota || 'Sin descripción'}}</span>
-                    <span class="label-creator" *ngIf="!label.is_owner">
-                      Creado por: {{label.creator_name}}
-                    </span>
+                      <button *ngIf="canDeleteLabel(label)" 
+                              (click)="$event.stopPropagation(); deleteLabel(label)"
+                              class="delete-btn">×</button>
+                    </div>
                   </div>
-                </div>
-                <!-- Formulario de edición inline (solo para propietarios) -->
-                <div *ngIf="label.id === editingLabelId && label.is_owner" 
-                     class="label-edit-form inline">
-                  <div class="form-content">
-                    <select class="tag-select" 
-                            [(ngModel)]="newLabel.tag"
-                            name="tag"
-                            required>
-                      <option [ngValue]="null">Seleccione un tag</option>
-                      <option *ngFor="let tag of availableTags" 
-                              [ngValue]="tag.id">
-                        {{tag.name}} ({{tag.public ? 'Público' : 'Privado'}})
-                      </option>
-                    </select>
-                    <input type="text"
-                           class="label-description"
-                           [(ngModel)]="newLabel.nota"
-                           name="nota"
-                           required
-                           placeholder="Descripción de la etiqueta"/>
-                    <div class="form-actions">
-                      <div class="visibility-toggle" *ngIf="auth.getUser()?.is_profesor">
-                        <input 
-                          type="checkbox" 
-                          [(ngModel)]="newLabel.public" 
-                          [checked]="newLabel.public"
-                          name="public" 
-                          id="labelPublic"
-                          class="toggle-checkbox">
-                        <label for="labelPublic" class="toggle-label">Hacer pública</label>
-                      </div>
-                      <div class="action-buttons">
-                        <button class="save-button small" 
-                                (click)="saveLabel()"
-                                [disabled]="!newLabel.tag || !newLabel.nota">
-                          Guardar
-                        </button>
-                        <button class="cancel-button small" (click)="cancelEditing()">
-                          Cancelar
-                        </button>
+
+                  <!-- Formulario de edición -->
+                  <div *ngIf="label.id === editingLabelId" class="label-edit-form">
+                    <div class="form-content">
+                      <select class="tag-select" 
+                              [(ngModel)]="newLabel.tag"
+                              name="tag"
+                              required>
+                        <option [ngValue]="null">Seleccione un tag</option>
+                        <option *ngFor="let tag of availableTags" 
+                                [ngValue]="tag.id">
+                          {{tag.name}} ({{tag.public ? 'Público' : 'Privado'}})
+                        </option>
+                      </select>
+                      <input type="text"
+                             class="label-description"
+                             [(ngModel)]="newLabel.nota"
+                             name="nota"
+                             required
+                             placeholder="Descripción de la etiqueta"/>
+                      <div class="form-actions">
+                        <div class="visibility-toggle" *ngIf="auth.getUser()?.is_profesor">
+                          <input type="checkbox" 
+                                 [(ngModel)]="newLabel.public" 
+                                 name="public">
+                          <label>Hacer pública</label>
+                        </div>
+                        <div class="action-buttons">
+                          <button class="save-button" 
+                                  (click)="saveLabel()"
+                                  [disabled]="!newLabel.tag || !newLabel.nota">
+                            Guardar
+                          </button>
+                          <button class="cancel-button" 
+                                  (click)="cancelEditing()">
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
           </div>
 
           <!-- Sección de Notas -->
@@ -163,7 +220,10 @@
           
             <!-- Mostrar las secciones de notas solo si no estamos editando ni viendo una nota -->
             <div *ngIf="!isEditingNota && !selectedNota">
-              <h3>Notas</h3>
+              <div class="notes-header">
+                <h3>Notas</h3>
+                <button (click)="startAddNota()" class="add-note-button">Agregar Nota</button>
+              </div>
               
               <!-- Notas públicas -->
               <div class="notes-section">
@@ -173,7 +233,10 @@
                     <div class="note-preview">
                       <div class="note-header">
                         <h5>{{ nota.titulo }}</h5>
-                        <span class="note-tag public">Pública</span>
+                        <div class="note-info">
+                          <span class="note-author">{{ getNotaAuthor(nota) }}</span>
+                          <span class="note-tag public">Pública</span>
+                        </div>
                       </div>
                       <p class="note-preview-text">{{ nota.cuerpo | slice:0:100 }}{{ nota.cuerpo.length > 100 ? '...' : '' }}</p>
                     </div>
@@ -202,8 +265,6 @@
                   </div>
                 </div>
               </div>
-            
-              <button (click)="startAddNota()" class="add-note-button">Agregar Nota</button>
             </div>
           
             <!-- Nueva vista de nota seleccionada -->

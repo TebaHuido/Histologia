@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { NgFor, CommonModule } from '@angular/common'; // Import CommonModule
 import { FormsModule } from '@angular/forms'; // Import FormsModule
 import { ApiService } from '../services/api.service';
-import { Tejido, Label, Tag } from '../services/tejidos.mock';  // Remove Muestra from import
+import { Tejido, Label, Tag, Profesor, Alumno } from '../services/tejidos.mock';  // Remove Muestra from import
 import { ActivatedRoute } from '@angular/router';
 import { NgxImageZoomModule } from 'ngx-image-zoom';
 import { ImagenZoomComponent } from '../imagen-zoom/imagen-zoom.component';
@@ -39,6 +39,10 @@ interface LocalMuestra {  // Renamed from Muestra to avoid conflict
   capturas: Captura[];
   notas: NotaResponse[];  // Update this to use NotaResponse
   sistemas: string[];
+  public: boolean;  // Add this property
+  Categoria: any[];  // Add this property
+  organo: any[];  // Add this property
+  tincion: any[];  // Add this property
 }
 
 @Component({
@@ -72,6 +76,16 @@ export class TejidoComponent implements OnInit {
   editingLabelId: number | null = null;
   newLabel: Partial<Label> = { public: false }; // Add public field
   highlightedLabelId: number | null = null;
+  groupedLabels: { [key: string]: { 
+    labels: Label[], 
+    isCollapsed: boolean,
+    isVisible: boolean 
+  } } = {};
+  objectKeys = Object.keys;
+  profesores: Profesor[] = []; 
+  alumnos: Alumno[] = [];
+  isEditingMuestra = false;
+  editingMuestra: any = null;
 
   constructor(private route: ActivatedRoute, private api: ApiService, public auth: AuthService) { }
 
@@ -83,6 +97,7 @@ export class TejidoComponent implements OnInit {
       }
     });
     this.loadTags(); // Ensure tags are loaded on initialization
+    this.loadUsers(); // Añadir esta llamada
   }
 
   getTejido(id: number): void {
@@ -98,7 +113,11 @@ export class TejidoComponent implements OnInit {
             ...nota,
             public: nota.public || false // Ensure public property exists
           })),
-          sistemas: tejido.sistemas.map((s: any) => `${s.sistema} - ${s.organo}`)
+          sistemas: tejido.sistemas.map((s: any) => `${s.sistema} - ${s.organo}`),
+          public: tejido.public || false,  // Add this property
+          Categoria: tejido.Categoria || [],  // Add this property
+          organo: tejido.organo || [],  // Add this property
+          tincion: tejido.tincion || []  // Add this property
         };
         this.tejidosArray.push(muestra);
         if (muestra.capturas && muestra.capturas.length > 0) {
@@ -271,14 +290,13 @@ export class TejidoComponent implements OnInit {
     if (this.imagenSeleccionada?.id) {
       this.api.getLabels(this.imagenSeleccionada.id).subscribe(
         labels => {
-          console.log('Labels loaded:', labels); // Debugging
           this.currentLabels = this.filterLabels(labels).map(label => ({
             ...label,
-            visible: true // Add visibility property to each label
+            visible: true
           }));
           this.initialLabels = this.currentLabels;
+          this.updateGroupedLabels();
           this.updateVisibleLabels();
-          console.log('Current labels:', this.currentLabels); // Debugging
         },
         error => console.error('Error loading labels:', error)
       );
@@ -291,8 +309,11 @@ export class TejidoComponent implements OnInit {
   }
 
   private updateVisibleLabels(): void {
-    // Filter only visible labels and pass them to imagen-zoom component
-    this.initialLabels = this.currentLabels.filter(label => label.visible);
+    this.initialLabels = this.currentLabels.filter(label => {
+      const tagName = this.getLabelTagName(label);
+      const group = this.groupedLabels[tagName];
+      return group?.isVisible && label.visible !== false;
+    });
   }
 
   filterLabels(labels: Label[]): Label[] {
@@ -322,12 +343,12 @@ export class TejidoComponent implements OnInit {
   }
 
   getLabelTagName(label: Label): string {
-    if (label.tag === null) return 'Unknown'; // Handle null tag
+    if (label.tag === null) return 'Sin etiquetar'; // Cambiar el texto
     if (this.isTagObject(label.tag)) {
       return label.tag.name;
     }
     const tagObject = this.availableTags.find(t => t.id === label.tag);
-    return tagObject ? tagObject.name : 'Unknown';
+    return tagObject ? tagObject.name : 'Sin etiquetar'; // Cambiar el texto aquí también
   }
 
   highlightLabel(label: Label): void {
@@ -344,6 +365,14 @@ export class TejidoComponent implements OnInit {
 
   toggleTaggingMode(): void {
     this.isTaggingMode = !this.isTaggingMode;
+    if (!this.isTaggingMode) {
+      // Al desactivar el modo etiquetado, limpiar todos los resaltados
+      this.highlightedLabelId = null;
+      this.currentLabels = this.currentLabels.map(label => ({
+        ...label,
+        highlighted: false
+      }));
+    }
     if (this.isTaggingMode) {
       this.loadTags();
     }
@@ -396,17 +425,14 @@ export class TejidoComponent implements OnInit {
       return;
     }
 
-    // Asegurarse de que public tenga un valor booleano
     const isPublic = user.is_alumno ? false : !!this.newLabel.public;
 
     const updateData: Partial<Label> = {
       nota: this.newLabel.nota || '',
       tag: Number(this.newLabel.tag),
       coordenadas: this.newLabel.coordenadas || { x: 0, y: 0 },
-      public: isPublic // Asegurar que se envíe el valor correcto
+      public: isPublic
     };
-
-    console.log('Updating label with data:', updateData); // Para debugging
 
     this.api.updateLabel(this.editingLabelId, updateData).subscribe({
       next: (updatedLabel) => {
@@ -419,14 +445,18 @@ export class TejidoComponent implements OnInit {
               ...updatedLabel,
               visible: true,
               is_owner: true,
-              public: updatedLabel.public // Asegurarse de que se actualice el estado público
+              public: updatedLabel.public,
+              // Asegurar que se incluyan los detalles del tag
+              tag: this.availableTags.find(t => t.id === updatedLabel.tag) || updatedLabel.tag
             };
           }
           return label;
         });
 
+        // Actualizar grupos y etiquetas visibles
         this.editingLabelId = null;
         this.newLabel = { public: false };
+        this.updateGroupedLabels();
         this.updateVisibleLabels();
         this.errorMessage = '';
       },
@@ -536,6 +566,139 @@ export class TejidoComponent implements OnInit {
         (user.is_profesor && nota.profesor === user.id)
       )
     ) || [];
+  }
+
+  private updateGroupedLabels(): void {
+    const newGroups: { [key: string]: { labels: Label[], isCollapsed: boolean, isVisible: boolean } } = {};
+    const sinEtiquetarKey = 'Sin etiquetar';
+    let sinEtiquetarGroup: { labels: Label[], isCollapsed: boolean, isVisible: boolean } | undefined;
+    
+    // Procesar primero todas las etiquetas que no son "Sin etiquetar"
+    this.currentLabels.forEach(label => {
+      const tagName = this.getLabelTagName(label);
+      if (tagName === sinEtiquetarKey) {
+        // Guardar el grupo "Sin etiquetar" para después
+        if (!sinEtiquetarGroup) {
+          const previousState = this.groupedLabels[tagName] || { isCollapsed: false, isVisible: true };
+          sinEtiquetarGroup = {
+            labels: [],
+            isCollapsed: previousState.isCollapsed,
+            isVisible: previousState.isVisible
+          };
+        }
+        sinEtiquetarGroup.labels.push(label);
+      } else {
+        // Procesar las etiquetas normales
+        if (!newGroups[tagName]) {
+          const previousState = this.groupedLabels[tagName] || { isCollapsed: false, isVisible: true };
+          newGroups[tagName] = {
+            labels: [],
+            isCollapsed: previousState.isCollapsed,
+            isVisible: previousState.isVisible
+          };
+        }
+        newGroups[tagName].labels.push(label);
+      }
+    });
+
+    // Agregar el grupo "Sin etiquetar" al final si existe
+    if (sinEtiquetarGroup && sinEtiquetarGroup.labels.length > 0) {
+      newGroups[sinEtiquetarKey] = sinEtiquetarGroup;
+    }
+
+    this.groupedLabels = newGroups;
+    this.updateVisibleLabels();
+  }
+
+  toggleGroupVisibility(tagName: string): void {
+    if (this.groupedLabels[tagName]) {
+      this.groupedLabels[tagName].isVisible = !this.groupedLabels[tagName].isVisible;
+      this.updateVisibleLabels();
+    }
+  }
+
+  toggleGroupCollapse(tagName: string): void {
+    if (this.groupedLabels[tagName]) {
+      this.groupedLabels[tagName].isCollapsed = !this.groupedLabels[tagName].isCollapsed;
+    }
+  }
+
+  canDeleteLabel(label: Label): boolean {
+    const user = this.auth.getUser();
+    if (!user) return false;
+    return label.created_by === user.id;
+  }
+
+  deleteLabel(label: Label): void {
+    if (!label.id || !this.canDeleteLabel(label)) return;
+
+    if (confirm('¿Estás seguro de que deseas eliminar esta etiqueta?')) {
+      this.api.deleteLabel(label.id).subscribe({
+        next: () => {
+          this.currentLabels = this.currentLabels.filter(l => l.id !== label.id);
+          this.updateGroupedLabels();
+          this.updateVisibleLabels();
+        },
+        error: (error) => console.error('Error al eliminar la etiqueta:', error)
+      });
+    }
+  }
+
+  getNotaAuthor(nota: NotaResponse): string {
+    if (nota.profesor) {
+      return 'Prof. ' + this.profesores.find(p => p.id === nota.profesor)?.nombre || 'Desconocido';
+    } else if (nota.alumno) {
+      return this.alumnos.find(a => a.id === nota.alumno)?.nombre || 'Desconocido';
+    }
+    return 'Desconocido';
+  }
+
+  loadUsers(): void {
+    this.api.getProfesores().subscribe(
+      (profesores: Profesor[]) => this.profesores = profesores,
+      (error: any) => console.error('Error cargando profesores:', error)
+    );
+    this.api.getAlumnos().subscribe(
+      (alumnos: Alumno[]) => this.alumnos = alumnos,
+      (error: any) => console.error('Error cargando alumnos:', error)
+    );
+  }
+
+  startEditingMuestra(): void {
+    if (!this.tejidosArray[0] || !this.auth.getUser()?.is_profesor) return;
+    
+    this.editingMuestra = {
+      name: this.tejidosArray[0].name,
+      public: this.tejidosArray[0].public,
+      Categoria: this.tejidosArray[0].Categoria,
+      organo: this.tejidosArray[0].organo,
+      tincion: this.tejidosArray[0].tincion
+    };
+    this.isEditingMuestra = true;
+  }
+
+  saveMuestraChanges(): void {
+    if (!this.tejidosArray[0] || !this.editingMuestra) return;
+
+    this.api.updateMuestra(this.tejidosArray[0].id, this.editingMuestra).subscribe({
+      next: (updatedMuestra) => {
+        this.tejidosArray[0] = {
+          ...this.tejidosArray[0],
+          ...updatedMuestra
+        };
+        this.isEditingMuestra = false;
+        this.editingMuestra = null;
+      },
+      error: (error) => {
+        console.error('Error updating muestra:', error);
+        this.errorMessage = 'Error al actualizar la muestra';
+      }
+    });
+  }
+
+  cancelMuestraEdit(): void {
+    this.isEditingMuestra = false;
+    this.editingMuestra = null;
   }
 }
 

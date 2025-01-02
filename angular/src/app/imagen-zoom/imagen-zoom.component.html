@@ -33,6 +33,11 @@
          [style.left]="(label.coordenadas.x * scale + offsetX - 5) + 'px'"
          [style.top]="(label.coordenadas.y * scale + offsetY - 5) + 'px'"
          [title]="label.nota">
+      <button *ngIf="label.is_owner" 
+              class="delete-button"
+              (click)="$event.stopPropagation(); deleteLabel(label.id!)">
+        ×
+      </button>
     </div>
   </ng-container>
 </div>

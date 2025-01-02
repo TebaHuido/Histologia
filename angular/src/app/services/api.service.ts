@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import { Tejido, Muestra, Label, Tag } from './tejidos.mock';
+import { catchError, switchMap } from 'rxjs/operators';
+import { Tejido, Muestra, Label, Tag, Profesor, Alumno } from './tejidos.mock';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -77,10 +77,15 @@ export class ApiService {
     });
   }
 
-  getAlumnos(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/alumnos/`, { 
-      withCredentials: true
-    });
+  getAlumnos(): Observable<Alumno[]> {
+    return this.http.get<Alumno[]>(`${this.apiUrl}/alumnos/`, { 
+      withCredentials: true 
+    }).pipe(
+      catchError(error => {
+        console.error('Error fetching alumnos:', error);
+        return of([]);
+      })
+    );
   }
 
   getAlumnosSinCurso(): Observable<any> {
@@ -145,7 +150,17 @@ export class ApiService {
   }
 
   createLabel(label: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/labels/`, label, this.getOptions());
+    return this.http.post(`${this.apiUrl}/labels/`, label, {
+      withCredentials: true
+    }).pipe(
+      catchError(error => {
+        console.error('Error creating label:', error);
+        return throwError(() => ({
+          error: error.error?.detail || 'Error al crear la etiqueta',
+          status: error.status
+        }));
+      })
+    );
   }
 
   getTags(): Observable<Tag[]> {
@@ -209,6 +224,90 @@ export class ApiService {
           error: error.error?.detail || 'Error al actualizar la etiqueta',
           status: error.status
         }));
+      })
+    );
+  }
+
+  deleteLabel(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/labels/${id}/`, {
+      withCredentials: true
+    }).pipe(
+      catchError(error => {
+        console.error('Error deleting label:', error);
+        return throwError(() => ({
+          error: error.error?.detail || 'Error al eliminar la etiqueta',
+          status: error.status
+        }));
+      })
+    );
+  }
+
+  getProfesores(): Observable<Profesor[]> {
+    return this.http.get<Profesor[]>(`${this.apiUrl}/profesores/`, { 
+      withCredentials: true 
+    }).pipe(
+      catchError(error => {
+        console.error('Error fetching profesores:', error);
+        return of([]);
+      })
+    );
+  }
+
+  getLotes(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/lotes/`, this.getOptions());
+  }
+
+  getLoteById(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/lotes/${id}/`, this.getOptions());
+  }
+
+  createLote(lote: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/lotes/`, lote, this.getOptions());
+  }
+
+  updateLote(id: number, lote: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/lotes/${id}/`, lote, this.getOptions());
+  }
+
+  deleteLote(id: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lotes/${id}/`, this.getOptions());
+  }
+
+  addMuestraToLote(loteId: number, muestraId: number): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/lotes/${loteId}/add_muestra/`, 
+      { muestra_id: muestraId }, 
+      this.getOptions()
+    );
+  }
+
+  removeMuestraFromLote(loteId: number, muestraId: number): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/lotes/${loteId}/remove_muestra/`, 
+      { muestra_id: muestraId }, 
+      this.getOptions()
+    );
+  }
+
+  getMuestras(): Observable<any> {
+    const headers = new HttpHeaders()
+      .set('Content-Type', 'application/json')
+      .set('Authorization', `Bearer ${this.authService.getToken()}`);
+
+    return this.http.get(`${this.apiUrl}/muestras/`, {
+      headers,
+      withCredentials: true
+    }).pipe(
+      catchError(error => {
+        console.error('Error fetching muestras:', error);
+        if (error.status === 403) {
+          // Handle token refresh if needed
+          console.log('Token invalid, attempting refresh...');
+          return this.authService.refreshToken().pipe(
+            switchMap(() => this.getMuestras())
+          );
+        }
+        return of([]);
       })
     );
   }

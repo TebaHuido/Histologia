@@ -60,17 +60,34 @@ export interface Muestra {
     sistemas: string[];
 }
 export interface Tejido {
-    capturas: { id: number; name: string; image: string; }[];
-    notas: { id: number; titulo: string; cuerpo: string; muestra: number[]; }[];
-    sistemas: string[];
     id: number;
     name: string;
+    imagenUrl: string;
+    sistemas: string[];  // Asegúrate de que esto esté definido como array
+    lotes: number[];  // Agregar esta línea
+    capturas: { id: number; name: string; image: string; }[];
+    notas: { id: number; titulo: string; cuerpo: string; muestra: number[]; }[];
     Categoria: number[];
     curso: any[];  // Si tienes una estructura específica para curso, puedes definirla en lugar de usar `any[]`
     organo: number[];
     sistema: string;
-    imagenUrl: string;
+    public: boolean;  // Add this property
+    tincion: any[];   // Add this property
 }
+
+export interface Profesor {
+  id: number;
+  nombre: string;
+  email?: string;
+}
+
+export interface Alumno {
+  id: number;
+  nombre: string;
+  email?: string;
+  curso?: number[];
+}
+
 export const tejidosArray: ITejido[] = [
     {
         id: 1,

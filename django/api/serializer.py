@@ -187,9 +187,12 @@ class MuestraSerializer(serializers.ModelSerializer):
         return sistemas if sistemas else []
 
 class LoteSerializer(serializers.ModelSerializer):
+    cursos_details = CursoSerializer(source='cursos', many=True, read_only=True)
+    muestras_details = MuestraSerializer(source='muestras', many=True, read_only=True)
+
     class Meta:
         model = Lote
-        fields = '__all__'
+        fields = ['id', 'name', 'cursos', 'muestras', 'cursos_details', 'muestras_details']
 
 class AlumnoSerializer(serializers.ModelSerializer):
     user = UserSerializer(required=False)  # Make user optional for updates

@@ -28,6 +28,14 @@
     </app-filter>
   </div>
   <section class="base">
+    <div *ngIf="listaTejidos_show.length === 0" class="no-muestras">
+      <p *ngIf="authService.isAlumno()">
+        No tienes muestras asignadas. Por favor, contacta a tu profesor para que te asigne a un curso con muestras.
+      </p>
+      <p *ngIf="!authService.isAlumno()">
+        No hay muestras disponibles en el sistema.
+      </p>
+    </div>
     <!-- Itera sobre cada sistema único -->
     <div *ngFor="let sistema of sistemasUnicos" class="tissue-group">
       <p class="tissue">{{ sistema }}</p>
