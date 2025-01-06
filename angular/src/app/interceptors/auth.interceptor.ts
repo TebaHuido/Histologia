@@ -25,12 +25,18 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = authService.getToken();
   const csrfToken = authService.getCSRFToken();
 
+  // Only set "Content-Type: application/json" if not uploading files
+  let headers = req.headers
+    .set('Authorization', `Bearer ${token || ''}`)
+    .set('X-CSRFToken', csrfToken || '');
+  
+  if (!(req.body instanceof FormData)) {
+    headers = headers.set('Content-Type', 'application/json');
+  }
+
   // Clone the request and add auth headers
   const authReq = req.clone({
-    headers: req.headers
-      .set('Authorization', `Bearer ${token || ''}`)
-      .set('X-CSRFToken', csrfToken || '')
-      .set('Content-Type', 'application/json'),
+    headers,
     withCredentials: true
   });
 
@@ -77,7 +83,7 @@ export class AuthInterceptor implements HttpInterceptor {
             return this.handle403Error(request, next);
           }
         }
-        return throwError(error);
+        return throwError(() => error);
       })
     );
   }
@@ -92,8 +98,7 @@ export class AuthInterceptor implements HttpInterceptor {
     const csrfToken = this.authService.getCSRFToken();
 
     if (token) {
-      let headers = request.headers
-        .set('Authorization', `Bearer ${token}`);
+      let headers = request.headers.set('Authorization', `Bearer ${token}`);
       
       if (csrfToken) {
         headers = headers.set('X-CSRFToken', csrfToken);
@@ -121,7 +126,7 @@ export class AuthInterceptor implements HttpInterceptor {
         catchError((err) => {
           this.isRefreshing = false;
           this.authService.logout();
-          return throwError(err);
+          return throwError(() => err);
         })
       );
     }

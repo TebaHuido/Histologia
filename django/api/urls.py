@@ -22,6 +22,7 @@ router.register(r'tinciones', views.TincionViewSet, basename='tinciones')
 router.register(r'tags', TagViewSet, basename='tags')
 router.register(r'labels', LabelViewSet, basename='labels')
 router.register(r'tejidos', MuestraViewSet2, basename='tejidos')  # Update this line
+router.register(r'uplimage', views.UplImageViewSet, basename='uplimage')
 
 urlpatterns = [
     path('filters/', views.FilterView.as_view(), name='filters'),

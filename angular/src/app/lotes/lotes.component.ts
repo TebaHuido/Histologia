@@ -27,7 +27,25 @@ interface Muestra {
   Categoria: Array<{ id: number; name: string; }>;
   organo: Array<{ id: number; name: string; }>;
   tincion: Array<{ id: number; name: string; }>;
-  imagenUrl?: string;
+  imagenUrl: string | undefined;  // Changed from optional to union with undefined
+  sistemas: Array<{ sistema: string; organo: string; display?: string; }>;
+}
+
+interface Sistema {
+  id?: number;
+  name?: string;
+  sistema: string;
+  organo: string;
+  display?: string;
+}
+
+interface RawMuestra {
+  id: number;
+  name: string;
+  sistemas?: Sistema[];
+  capturas?: Array<{ image: string }>;
+  organo?: any[];
+  tincion?: any[];
 }
 
 @Component({
@@ -57,6 +75,15 @@ export class LotesComponent implements OnInit {
   tags: any[] = [];
   
   filtrosMuestra = {
+    categoria: '',
+    organo: '',
+    sistema: '',
+    tincion: '',
+    tag: '',
+    searchText: ''
+  };
+
+  filtrosMuestraEdit = {
     categoria: '',
     organo: '',
     sistema: '',
@@ -102,15 +129,27 @@ export class LotesComponent implements OnInit {
 
   loadMuestras(): void {
     this.api.getMuestras().subscribe({
-      next: (data: any[]) => {
-        this.muestras = data.map((m: any) => ({
-          id: m.id,
-          name: m.name,
-          Categoria: m.Categoria || [],
-          organo: m.organo || [],
-          tincion: m.tincion || [],
-          imagenUrl: m.imagenUrl
-        }));
+      next: (data: RawMuestra[]) => {
+        this.muestras = data.map((m: RawMuestra) => {
+          const firstCapture = m.capturas && m.capturas.length > 0 ? m.capturas[0].image : undefined;
+          const sistemas = m.sistemas || [];
+          
+          return {
+            id: m.id,
+            name: m.name,
+            Categoria: sistemas.map(s => ({
+              id: s.sistema ? this.sistemas.find(sys => sys.name === s.sistema)?.id || 0 : 0,
+              name: s.sistema || ''
+            })),
+            organo: m.organo || [],
+            tincion: m.tincion || [],
+            imagenUrl: firstCapture,
+            sistemas: sistemas
+          };
+        });
+        
+        console.log('Raw data:', data);
+        console.log('Processed muestras:', this.muestras);
         this.muestrasFiltradas = [...this.muestras];
       },
       error: (error) => console.error('Error al cargar muestras:', error)
@@ -131,20 +170,100 @@ export class LotesComponent implements OnInit {
   }
 
   aplicarFiltros(): void {
+    console.log('Applying filters:', this.filtrosMuestra);
+    console.log('Available sistemas:', this.sistemas);
+    
     this.muestrasFiltradas = this.muestras.filter(muestra => {
       const matchesCategoria = !this.filtrosMuestra.categoria ||
-        muestra.Categoria.some((cat: any) => cat.id === this.filtrosMuestra.categoria);
+        muestra.Categoria.some(cat => {
+          console.log('Comparing categoria:', {
+            categoryId: cat.id,
+            selectedId: parseInt(this.filtrosMuestra.categoria, 10),
+            matches: cat.id === parseInt(this.filtrosMuestra.categoria, 10)
+          });
+          return cat.id === parseInt(this.filtrosMuestra.categoria, 10);
+        });
+
+      // Match órgano by name from sistemas
       const matchesOrgano = !this.filtrosMuestra.organo ||
-        muestra.organo.some((org: any) => org.id === this.filtrosMuestra.organo);
+        muestra.sistemas.some(sis => {
+          const selectedOrgano = this.organos.find(
+            org => org.id === parseInt(this.filtrosMuestra.organo, 10)
+          );
+          return sis.organo === selectedOrgano?.name;
+        });
+
+      // Match sistema by name
       const matchesSistema = !this.filtrosMuestra.sistema ||
-        muestra.organo.some((org: any) => org.sistema.some((sis: any) => sis.id === this.filtrosMuestra.sistema));
+        muestra.sistemas.some(sis => {
+          const selectedSistema = this.sistemas.find(
+            s => s.id === parseInt(this.filtrosMuestra.sistema, 10)
+          );
+          return sis.sistema === selectedSistema?.name;
+        });
+
+      // Match tinción by ID
       const matchesTincion = !this.filtrosMuestra.tincion ||
-        muestra.tincion.some((tin: any) => tin.id === this.filtrosMuestra.tincion);
+        muestra.tincion.some(tin => {
+          const selectedTincionId = parseInt(this.filtrosMuestra.tincion, 10);
+          console.log('Comparing tincion:', {
+            tincionId: tin.id,
+            selectedTincionId,
+            matches: tin.id === selectedTincionId
+          });
+          return tin.id === selectedTincionId;
+        });
+
+      // Match text search
       const matchesSearch = !this.filtrosMuestra.searchText ||
         muestra.name.toLowerCase().includes(this.filtrosMuestra.searchText.toLowerCase());
 
+      const matches = matchesCategoria && matchesOrgano && matchesSistema && matchesTincion && matchesSearch;
+      
+      console.log('Matches for muestra:', muestra.name, {
+        categoria: matchesCategoria,
+        organo: matchesOrgano,
+        sistema: matchesSistema,
+        tincion: matchesTincion,
+        search: matchesSearch,
+        final: matches
+      });
+
+      return matches;
+    });
+
+    console.log('Filtered results:', this.muestrasFiltradas);
+  }
+
+  aplicarFiltrosEdit(): void {
+    console.log('Applying filters for edit:', this.filtrosMuestraEdit);
+    
+    this.muestrasFiltradas_edit = this.muestras.filter(muestra => {
+      const matchesCategoria = !this.filtrosMuestraEdit.categoria ||
+        muestra.Categoria.some(cat => cat.id === parseInt(this.filtrosMuestraEdit.categoria, 10));
+
+      const matchesOrgano = !this.filtrosMuestraEdit.organo ||
+        muestra.sistemas.some(sis => {
+          const selectedOrgano = this.organos.find(org => org.id === parseInt(this.filtrosMuestraEdit.organo, 10));
+          return sis.organo === selectedOrgano?.name;
+        });
+
+      const matchesSistema = !this.filtrosMuestraEdit.sistema ||
+        muestra.sistemas.some(sis => {
+          const selectedSistema = this.sistemas.find(s => s.id === parseInt(this.filtrosMuestraEdit.sistema, 10));
+          return sis.sistema === selectedSistema?.name;
+        });
+
+      const matchesTincion = !this.filtrosMuestraEdit.tincion ||
+        muestra.tincion.some(tin => tin.id === parseInt(this.filtrosMuestraEdit.tincion, 10));
+
+      const matchesSearch = !this.filtrosMuestraEdit.searchText ||
+        muestra.name.toLowerCase().includes(this.filtrosMuestraEdit.searchText.toLowerCase());
+
       return matchesCategoria && matchesOrgano && matchesSistema && matchesTincion && matchesSearch;
     });
+
+    console.log('Filtered results for edit:', this.muestrasFiltradas_edit);
   }
 
   resetFiltros(): void {
@@ -157,6 +276,18 @@ export class LotesComponent implements OnInit {
       searchText: ''
     };
     this.muestrasFiltradas = [...this.muestras];
+  }
+
+  resetFiltrosEdit(): void {
+    this.filtrosMuestraEdit = {
+      categoria: '',
+      organo: '',
+      sistema: '',
+      tincion: '',
+      tag: '',
+      searchText: ''
+    };
+    this.muestrasFiltradas_edit = [...this.muestras];
   }
 
   saveLote(): void {

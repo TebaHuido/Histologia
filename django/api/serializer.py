@@ -168,6 +168,10 @@ class MuestraSerializer2(serializers.ModelSerializer):
         tincion_instances = validated_data.pop('tincion')
         images = validated_data.pop('images')
 
+        # Debugging: Log validated data
+        logger.debug(f"Validated data: {validated_data}")
+        logger.debug(f"Images: {images}")
+
         # Creamos la muestra
         muestra = Muestra.objects.create(**validated_data)
 
@@ -211,40 +215,40 @@ class MuestraSerializer2(serializers.ModelSerializer):
 class LoteSerializer(serializers.ModelSerializer):
     cursos_details = CursoSerializer(source='cursos', many=True, read_only=True)
     muestras_details = MuestraSerializer(source='muestras', many=True, read_only=True)
-
-    class Meta:
-        model = Lote
-        fields = '__all__'
-
-class AlumnoSerializer(serializers.ModelSerializer):
-    curso = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Curso.objects.all()
+    curso_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+    muestra_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
     )
 
     class Meta:
-        model = Alumno
-        fields = ['id', 'user', 'name', 'curso', 'permiso']
+        model = Lote
+        fields = ['id', 'name', 'cursos', 'muestras', 'cursos_details', 
+                 'muestras_details', 'curso_ids', 'muestra_ids']
+
+    def create(self, validated_data):
+        curso_ids = validated_data.pop('curso_ids', [])
+        muestra_ids = validated_data.pop('muestra_ids', [])
+        
+        lote = Lote.objects.create(**validated_data)
+        
+        if curso_ids:
+            lote.cursos.set(Curso.objects.filter(id__in=curso_ids))
+        if muestra_ids:
+            lote.muestras.set(Muestra.objects.filter(id__in=muestra_ids))
+            
+        return lote
 
     def update(self, instance, validated_data):
-        # Remove user data from update if present
-        user_data = validated_data.pop('user', None)
+        curso_ids = validated_data.pop('curso_ids', None)
+        muestra_ids = validated_data.pop('muestra_ids', None)
         
-        # Update only email if provided in user_data
-        if user_data and 'email' in user_data:
-            instance.user.email = user_data['email']
-            instance.user.save()
-
-        # Update alumno fields
-        instance.name = validated_data.get('name', instance.name)
-        if 'curso' in validated_data:
-            instance.curso.set(validated_data['curso'])
-        if 'permiso' in validated_data:
-            instance.permiso.set(validated_data['permiso'])
-        
-        instance.save()
-        return instance
-
+        # Update basic fields
 class NotaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notas
@@ -262,10 +266,29 @@ class MuestraSerializer2(serializers.ModelSerializer):
 
     def get_capturas(self, obj):
         capturas = obj.captura_set.all()
-        return CapturaSerializer(capturas, many=True, context=self.context).data
+        return [{
+            'id': captura.id,
+            'name': captura.name,
+            'image': captura.image.url,
+            'labels': LabelSerializer(
+                Label.objects.filter(captura=captura),
+                many=True,
+                context=self.context
+            ).data
+        } for captura in capturas]
 
     def get_notas(self, obj):
-        notas = obj.notas_set.all()
+        user = self.context.get('request').user if 'request' in self.context else None
+        if not user:
+            return []
+
+        # Filtrar notas según permisos
+        notas = obj.notas_set.filter(
+            models.Q(public=True) |
+            models.Q(alumno=user) |
+            models.Q(profesor=user)
+        ).distinct()
+        
         return NotaSerializer(notas, many=True).data
 
     def get_sistemas(self, obj):
@@ -341,3 +364,105 @@ class CursoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Curso
         fields = '__all__'
+
+class UplImageMuestraSerializer(serializers.ModelSerializer):
+    images = serializers.ListField(
+        child=serializers.FileField(
+            max_length=100000,
+            allow_empty_file=False,
+            use_url=False
+        ),
+        write_only=True,
+        required=True
+    )
+    categoria_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True
+    )
+    organo_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True
+    )
+    tincion_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True
+    )
+    capturas = CapturaSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Muestra
+        fields = ['id', 'name', 'categoria_ids', 'organo_ids', 'tincion_ids', 'images', 'capturas']
+
+    def to_representation(self, instance):
+        """
+        Override to_representation to ensure we only return specific fields
+        and no unexpected relationships
+        """
+        ret = super().to_representation(instance)
+        # Only include specific fields we want to return
+        ret = {
+            'id': instance.id,
+            'name': instance.name,
+            'capturas': ret['capturas']
+        }
+        return ret
+
+    def create(self, validated_data):
+        try:
+            images = validated_data.pop('images', [])
+            categoria_ids = validated_data.pop('categoria_ids', [])
+            organo_ids = validated_data.pop('organo_ids', [])
+            tincion_ids = validated_data.pop('tincion_ids', [])
+
+            # Create fresh muestra with no previous relationships
+            muestra = Muestra.objects.create(name=validated_data['name'])
+            
+            # Set only the relationships we want
+            if categoria_ids:
+                muestra.Categoria.set(Categoria.objects.filter(id__in=categoria_ids))
+            if organo_ids:
+                muestra.organo.set(Organo.objects.filter(id__in=organo_ids))
+            if tincion_ids:
+                muestra.tincion.set(Tincion.objects.filter(id__in=tincion_ids))
+
+            # Create captures with clean names
+            for i, image in enumerate(images, 1):
+                Captura.objects.create(
+                    image=image,
+                    muestra=muestra,
+                    name=f"Captura {i}"
+                )
+
+            return muestra
+        except Exception as e:
+            print(f"Error in create: {str(e)}")
+            raise
+
+class AlumnoSerializer(serializers.ModelSerializer):
+    curso = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Curso.objects.all()
+    )
+
+    class Meta:
+        model = Alumno
+        fields = ['id', 'user', 'name', 'curso', 'permiso']
+
+    def update(self, instance, validated_data):
+        # Remove user data from update if present
+        user_data = validated_data.pop('user', None)
+        
+        # Update only email if provided in user_data
+        if user_data and 'email' in user_data:
+            instance.user.email = user_data['email']
+            instance.user.save()
+
+        # Update alumno fields
+        instance.name = validated_data.get('name', instance.name)
+        if 'curso' in validated_data:
+            instance.curso.set(validated_data['curso'])
+        if 'permiso' in validated_data:
+            instance.permiso.set(validated_data['permiso'])
+        
+        instance.save()
+        return instance

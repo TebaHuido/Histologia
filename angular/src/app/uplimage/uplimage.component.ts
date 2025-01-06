@@ -3,6 +3,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } fr
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../services/auth.service';
+import { catchError, switchMap, throwError } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -125,54 +126,45 @@ export class UplimageComponent implements OnInit {
   
     // Categorías
     const selectedCategory = this.sampleForm.get('category')?.value;
-    const newCategory = this.sampleForm.get('newCategory')?.value;
-    if (this.isCreatingNewCategory && newCategory) {
-      formData.append('categoria', newCategory);
-    } else if (selectedCategory) {
-      formData.append('categoria', selectedCategory);
-    }
+    formData.append('categoria', JSON.stringify([selectedCategory]));
   
     // Órganos
     const selectedOrgano = this.sampleForm.get('organo')?.value;
-    const newOrgano = this.sampleForm.get('newOrgano')?.value;
-    if (this.isCreatingNewOrgano && newOrgano) {
-      formData.append('organo', newOrgano);
-    } else if (selectedOrgano) {
-      formData.append('organo', selectedOrgano);
-    }
-  
-    // Sistemas
-    const selectedSistema = this.sampleForm.get('sistema')?.value;
-    const newSistema = this.sampleForm.get('newSistema')?.value;
-    if (this.isCreatingNewSistema && newSistema) {
-      formData.append('sistema', newSistema);
-    } else if (selectedSistema) {
-      formData.append('sistema', selectedSistema);
-    }
+    formData.append('organo', JSON.stringify([selectedOrgano]));
   
     // Tinciones
     const selectedTincion = this.sampleForm.get('tincion')?.value;
-    const newTincion = this.sampleForm.get('newTincion')?.value;
-    if (this.isCreatingNewTincion && newTincion) {
-      formData.append('tincion', newTincion);
-    } else if (selectedTincion) {
-      formData.append('tincion', selectedTincion);
-    }
+    formData.append('tincion', JSON.stringify([selectedTincion]));
+  
     // Imágenes
-    this.selectedFiles.forEach((file, index) => {
-      formData.append('images', file);
-      formData.append('image_names', this.imageFormArray.at(index).value || '');
+    this.selectedFiles.forEach((file) => {
+      formData.append('images', file, file.name);
     });
   
-    // Enviar solicitud al servidor
-    const headers = this.authService.getAuthHeaders();
-    this.http.post('http://localhost:8000/api/muestras/', formData, { headers, withCredentials: true }).subscribe({
+    // Enviar solicitud al servidor usando el nuevo endpoint
+    this.http.post('http://localhost:8000/api/uplimage/', formData, { 
+      withCredentials: true 
+    }).pipe(
+      catchError(error => {
+        if (error.status === 403 && error.error?.code === 'token_not_valid') {
+          return this.authService.refreshToken().pipe(
+            switchMap(() => {
+              return this.http.post('http://localhost:8000/api/uplimage/', formData, { 
+                withCredentials: true 
+              });
+            })
+          );
+        }
+        return throwError(() => error);
+      })
+    ).subscribe({
       next: (response) => {
         console.log('Muestra creada exitosamente:', response);
         this.resetForm();
       },
       error: (err) => {
         console.error('Error al crear la muestra:', err);
+        console.error('Error details:', err.error);
       }
     });
   }
