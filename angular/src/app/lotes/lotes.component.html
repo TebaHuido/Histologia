@@ -1,8 +1,13 @@
 <div class="lotes-container">
   <h2>Gestión de Lotes</h2>
 
+  <!-- Botón para mostrar/ocultar el formulario de creación -->
+  <button class="add-button" (click)="toggleCreateForm()">
+    {{ showCreateForm ? 'Cancelar' : '+ Crear Nuevo Lote' }}
+  </button>
+
   <!-- Formulario de creación -->
-  <div class="create-form" *ngIf="auth.isProfesor()">
+  <div class="create-form" *ngIf="showCreateForm && auth.isProfesor()">
     <h3>Crear Nuevo Lote</h3>
     <div class="form-group">
       <label for="name">Nombre:</label>
@@ -210,11 +215,16 @@
             <div *ngFor="let muestra of muestrasFiltradas_edit" class="muestra-item">
               <input 
                 type="checkbox" 
-                [id]="'muestra-' + muestra.id"
+                [id]="'edit-muestra-' + muestra.id"
                 [checked]="editSelectedMuestras.includes(muestra.id)"
                 (change)="toggleMuestra(muestra.id)"
               >
-              <label [for]="'muestra-' + muestra.id">{{muestra.name}}</label>
+              <label [for]="'edit-muestra-' + muestra.id">
+                <strong>{{muestra.name}}</strong>
+                <span class="muestra-details">
+                  {{muestra.sistemas.length ? (muestra.sistemas[0].display || muestra.sistemas[0].sistema + ' - ' + muestra.sistemas[0].organo) : 'Sin sistema asignado'}}
+                </span>
+              </label>
             </div>
           </div>
         </div>
@@ -224,6 +234,10 @@
             {{isLoading ? 'Guardando...' : 'Guardar cambios'}}
           </button>
           <button class="cancel-btn" (click)="cancelEdit()">Cancelar</button>
+        </div>
+        
+        <div class="error-message" *ngIf="errorMessage">
+          {{errorMessage}}
         </div>
       </div>
     </div>

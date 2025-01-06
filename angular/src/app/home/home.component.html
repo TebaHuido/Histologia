@@ -1,5 +1,9 @@
 <!-- home.component.html -->
 <div class="cuerpo">
+  <!-- Add error message display -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
   <div class="filters">
     <app-filter
       [label]="'Categorias'" 
@@ -24,12 +28,7 @@
   </div>
   <section class="base">
     <div *ngIf="listaTejidos_show.length === 0" class="no-muestras">
-      <p *ngIf="authService.isAlumno()">
-        No tienes muestras asignadas. Por favor, contacta a tu profesor para que te asigne a un curso con muestras.
-      </p>
-      <p *ngIf="!authService.isAlumno()">
-        No hay muestras disponibles en el sistema.
-      </p>
+      <p>{{ errorMessage || 'No hay muestras disponibles.' }}</p>
     </div>
     <!-- Itera sobre cada sistema único -->
     <div *ngFor="let sistema of sistemasUnicos" class="tissue-group">

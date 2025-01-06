@@ -1,6 +1,6 @@
 <div class="container">
   <!-- Vista de Cursos -->
-  <div class="section" [hidden]="selectedCurso">
+  <div class="section">
     <div class="header">
       <h2>Gestión de Cursos</h2>
       <button class="add-button" (click)="showNewCursoForm = true">+ Nuevo Curso</button>
@@ -31,20 +31,8 @@
       </form>
     </div>
 
-    <!-- Mostrar información del último curso creado -->
-    <div class="curso-created-info" *ngIf="lastCreatedCurso">
-      <div class="alert alert-success">
-        <h4>Curso creado exitosamente</h4>
-        <p>Asignatura: {{lastCreatedCurso.asignatura}}</p>
-        <p>Año: {{lastCreatedCurso.anio}}</p>
-        <p>Semestre: {{lastCreatedCurso.semestre ? '1' : '2'}}</p>
-        <p>Grupo: {{lastCreatedCurso.grupo}}</p>
-        <button (click)="lastCreatedCurso = null">Cerrar</button>
-      </div>
-    </div>
-
     <!-- Subida de archivo XLS -->
-    <div class="upload-section">
+    <div class="upload-section" *ngIf="!showNewCursoForm">
       <h3>Importar Curso desde Excel</h3>
       <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()">
         <!-- Datos del curso -->
@@ -68,7 +56,7 @@
     </div>
 
     <!-- Lista de Cursos -->
-    <div class="table-container">
+    <div class="table-container" *ngIf="!showNewCursoForm">
       <table>
         <thead>
           <tr>
@@ -96,6 +84,18 @@
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Mostrar información del último curso creado -->
+  <div class="curso-created-info" *ngIf="lastCreatedCurso">
+    <div class="alert alert-success">
+      <h4>Curso creado exitosamente</h4>
+      <p>Asignatura: {{lastCreatedCurso.asignatura}}</p>
+      <p>Año: {{lastCreatedCurso.anio}}</p>
+      <p>Semestre: {{lastCreatedCurso.semestre ? '1' : '2'}}</p>
+      <p>Grupo: {{lastCreatedCurso.grupo}}</p>
+      <button (click)="lastCreatedCurso = null">Cerrar</button>
     </div>
   </div>
 

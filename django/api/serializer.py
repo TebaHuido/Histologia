@@ -216,39 +216,53 @@ class LoteSerializer(serializers.ModelSerializer):
     cursos_details = CursoSerializer(source='cursos', many=True, read_only=True)
     muestras_details = MuestraSerializer(source='muestras', many=True, read_only=True)
     curso_ids = serializers.ListField(
-        child=serializers.IntegerField(),
+        child=serializers.IntegerField(min_value=1),
         write_only=True,
-        required=False
+        required=False,
+        allow_empty=True
     )
     muestra_ids = serializers.ListField(
-        child=serializers.IntegerField(),
+        child=serializers.IntegerField(min_value=1),
         write_only=True,
-        required=False
+        required=False,
+        allow_empty=True
     )
+    cursos = CursoSerializer(many=True, read_only=True)
+    muestras = MuestraSerializer(many=True, read_only=True)
 
     class Meta:
         model = Lote
         fields = ['id', 'name', 'cursos', 'muestras', 'cursos_details', 
                  'muestras_details', 'curso_ids', 'muestra_ids']
-
+    
     def create(self, validated_data):
         curso_ids = validated_data.pop('curso_ids', [])
         muestra_ids = validated_data.pop('muestra_ids', [])
-        
         lote = Lote.objects.create(**validated_data)
-        
         if curso_ids:
             lote.cursos.set(Curso.objects.filter(id__in=curso_ids))
         if muestra_ids:
             lote.muestras.set(Muestra.objects.filter(id__in=muestra_ids))
-            
         return lote
-
+    
     def update(self, instance, validated_data):
         curso_ids = validated_data.pop('curso_ids', None)
         muestra_ids = validated_data.pop('muestra_ids', None)
         
-        # Update basic fields
+        instance.name = validated_data.get('name', instance.name)
+        instance.save()
+
+        # Only update relations if IDs were provided
+        if curso_ids is not None:
+            curso_ids = [int(id) for id in curso_ids if id]
+            instance.cursos.set(curso_ids)
+            
+        if muestra_ids is not None:
+            muestra_ids = [int(id) for id in muestra_ids if id]
+            instance.muestras.set(muestra_ids)
+            
+        return instance
+
 class NotaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notas

@@ -39,6 +39,8 @@ export class HomeComponent implements OnInit {
   muestrasFiltradas: Tejido[] = [];
   muestras: Tejido[] = [];
 
+  private baseListaTejidos: Tejido[] = []; // Add this line to store the initial authorized list
+
   constructor(
     private api: ApiService, 
     public authService: AuthService,  // Change from private to public
@@ -83,15 +85,23 @@ export class HomeComponent implements OnInit {
   loadTejidos(): void {
     this.api.getTejidos('').subscribe({
       next: (data) => {
-        // Add null check and filter out null values
         const validData = data?.filter(item => item !== null) || [];
+        console.log('Received tejidos data:', validData);
+
         if (validData.length === 0) {
+          if (this.authService.isAlumno()) {
+            this.errorMessage = 'No tienes acceso a ninguna muestra. Contacta a tu profesor para que te asigne a un curso con muestras.';
+          } else {
+            this.errorMessage = 'No hay muestras disponibles en el sistema.';
+          }
           this.handleNoMuestras();
         } else {
+          // Store the initial authorized list
+          this.baseListaTejidos = validData;
           this.listaTejidos_all = validData;
           this.listaTejidos_show = validData;
           this.filteredTejidosItems = validData
-            .filter(te => te && te.name)  // Add null check
+            .filter(te => te && te.name)
             .map(te => ({ nombre: te.name }));
           this.obtenerSistemasUnicos();
         }
@@ -101,22 +111,21 @@ export class HomeComponent implements OnInit {
         if (error.status === 403) {
           this.authService.logout();
         } else {
+          this.errorMessage = 'Error al cargar las muestras. Por favor, inténtalo de nuevo.';
           this.handleNoMuestras();
         }
       }
     });
   }
 
+  // Add error message property
+  errorMessage: string = '';
+
   private handleNoMuestras(): void {
     this.listaTejidos_all = [];
     this.listaTejidos_show = [];
     this.filteredTejidosItems = [];
     this.sistemasUnicos = [];
-    if (this.authService.isAlumno()) {
-      alert('No tienes acceso a ninguna muestra. Contacta a tu profesor para que te asigne a un curso con muestras.');
-    } else {
-      alert('No hay muestras disponibles en el sistema.');
-    }
   }
 
   private transformDataToItems(data: any[]): Item[] {
@@ -125,9 +134,19 @@ export class HomeComponent implements OnInit {
   }
 
   filterMuestras(): void {
+    // If no filters are active, restore to base list
+    if (Object.values(this.selectedFilters).every(arr => arr.length === 0)) {
+      this.listaTejidos_show = [...this.baseListaTejidos];
+      this.obtenerSistemasUnicos();
+      return;
+    }
+
     this.api.filterMuestras(this.selectedFilters).subscribe({
       next: (tejidos: Tejido[]) => {
-        this.listaTejidos_show = tejidos;
+        // Filter received tejidos against base authorized list
+        this.listaTejidos_show = tejidos.filter(tejido => 
+          this.baseListaTejidos.some(baseTejido => baseTejido.id === tejido.id)
+        );
         this.obtenerSistemasUnicos();
       },
       error: err => {

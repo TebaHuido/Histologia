@@ -141,7 +141,7 @@ export class UplimageComponent implements OnInit {
       formData.append('images', file, file.name);
     });
   
-    // Enviar solicitud al servidor usando el nuevo endpoint
+    // Enviar solicitud al servidor
     this.http.post('http://localhost:8000/api/uplimage/', formData, { 
       withCredentials: true 
     }).pipe(
@@ -158,13 +158,28 @@ export class UplimageComponent implements OnInit {
         return throwError(() => error);
       })
     ).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         console.log('Muestra creada exitosamente:', response);
-        this.resetForm();
+        // Check if we got a success response with muestra data
+        if (response.id && response.name) {
+          this.resetForm();
+          // Optionally show success message to user
+          alert('Muestra creada exitosamente');
+        } else {
+          console.warn('Respuesta inesperada:', response);
+        }
       },
       error: (err) => {
         console.error('Error al crear la muestra:', err);
-        console.error('Error details:', err.error);
+        if (err.error?.error) {
+          // Handle structured error
+          console.error('Error details:', err.error.error);
+          alert('Error al crear la muestra: ' + err.error.error);
+        } else {
+          // Handle generic error
+          console.error('Error details:', err.error);
+          alert('Error al crear la muestra. Por favor, intente de nuevo.');
+        }
       }
     });
   }

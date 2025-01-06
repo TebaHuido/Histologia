@@ -244,23 +244,39 @@ class MuestraViewSet2(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.is_alumno:
-            # Obtener los cursos del alumno
+            # Get student's courses
             cursos = user.alumno.curso.all()
-            # Obtener los lotes asociados a esos cursos
-            lotes = Lote.objects.filter(cursos__in=cursos).distinct()
-            # Obtener las muestras asociadas a esos lotes
-            queryset = Muestra.objects.filter(lotes_relacionados__in=lotes).distinct()
+            print(f"Cursos del alumno {user.username}: {cursos}")
+            
+            # Get lotes associated with those courses
+            lotes = Lote.objects.filter(cursos__in=cursos)
+            print(f"Lotes asociados: {lotes}")
+            
+            # Get muestras from those lotes - using 'lotes' instead of 'lotes_relacionados'
+            queryset = Muestra.objects.filter(lotes__in=lotes).distinct()
+            print(f"Muestras encontradas: {queryset.count()}")
+            
+            # Debug log the actual SQL query
+            print("SQL Query:", queryset.query)
+            
+            return queryset
         else:
-            queryset = Muestra.objects.all()
-        
-        return queryset.distinct()
+            # For non-students (professors, etc.), show all muestras
+            return Muestra.objects.all()
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
+        try:
+            queryset = self.get_queryset()
+            serializer = self.get_serializer(
+                queryset, 
+                many=True, 
+                context={'request': request}
+            )
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Error in list view: {str(e)}")
+            raise
 
-# Vista para manejar lotes (solo lectura)
 class LoteViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsProfesorOrReadOnly]
     serializer_class = LoteSerializer
@@ -281,58 +297,28 @@ class LoteViewSet(viewsets.ModelViewSet):
         return queryset.distinct()
 
     def create(self, request, *args, **kwargs):
-        try:
-            data = request.data.copy()
-            
-            # Parse JSON strings if present
-            for field in ['curso_ids', 'muestra_ids']:
-                if field in data and isinstance(data[field], str):
-                    data[field] = json.loads(data[field])
-            
-            serializer = self.get_serializer(data=data)
-            if serializer.is_valid():
-                self.perform_create(serializer)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-        except json.JSONDecodeError:
-            return Response({'error': 'Invalid JSON in request'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': str(e)}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
-        try:
-            data = request.data.copy()
-            
-            # Parse JSON strings if present
-            for field in ['curso_ids', 'muestra_ids']:
-                if field in data and isinstance(data[field], str):
-                    data[field] = json.loads(data[field])
-                    
-            partial = kwargs.pop('partial', False)
-            instance = self.get_object()
-            serializer = self.get_serializer(instance, data=data, partial=partial)
-            
-            if serializer.is_valid():
-                self.perform_update(serializer)
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
-        except json.JSONDecodeError:
-            return Response({'error': 'Invalid JSON in request'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': str(e)}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        cursos = self.request.data.get('cursos', [])
-        muestras = self.request.data.get('muestras', [])
+        cursos = self.request.data.get('curso_ids', [])
+        muestras = self.request.data.get('muestra_ids', [])
         
-        # Solo establecer las relaciones si se proporcionan los datos
+        # Filter out None values
+        cursos = [curso for curso in cursos if curso is not None]
+        muestras = [muestra for muestra in muestras if muestra is not None]
+
         if cursos:
             instance.cursos.set(cursos)
         if muestras:
@@ -340,13 +326,15 @@ class LoteViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         instance = serializer.save()
-        cursos = self.request.data.get('cursos', None)
-        muestras = self.request.data.get('muestras', None)
+        cursos = self.request.data.get('curso_ids', None)
+        muestras = self.request.data.get('muestra_ids', None)
         
-        # Solo actualizar las relaciones si se proporcionan los datos
+        # Filter out None values
         if cursos is not None:
+            cursos = [curso for curso in cursos if curso is not None]
             instance.cursos.set(cursos)
         if muestras is not None:
+            muestras = [muestra for muestra in muestras if muestra is not None]
             instance.muestras.set(muestras)
 
 # Vista para manejar alumnos (solo lectura)
@@ -436,11 +424,22 @@ class TincionViewSet(viewsets.ModelViewSet):
     serializer_class = TincionSerializer
 
 class MuestraFilterAPIView(generics.ListAPIView):
-    queryset = Muestra.objects.all()
     serializer_class = MuestraSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        user = self.request.user
+        base_queryset = None
+
+        # First get the base queryset according to user permissions
+        if user.is_alumno:
+            cursos = user.alumno.curso.all()
+            lotes = Lote.objects.filter(cursos__in=cursos)
+            base_queryset = Muestra.objects.filter(lotes__in=lotes)
+        else:
+            base_queryset = Muestra.objects.all()
+
+        # Then apply any additional filters
+        queryset = base_queryset
         categoria_id = self.request.query_params.get('categoria')
         sistema_id = self.request.query_params.get('sistema')
         organo_id = self.request.query_params.get('organo')
@@ -459,6 +458,7 @@ class MuestraFilterAPIView(generics.ListAPIView):
             queryset = queryset.filter(notas__tags__id=tag_id)
 
         return queryset.distinct()
+
 class TagViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = TagsSerializer
@@ -606,13 +606,26 @@ class UplimageView(APIView):
             # Create serializer and validate
             serializer = UplImageMuestraSerializer(data=data)
             if not serializer.is_valid():
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'error': serializer.errors}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Save the muestra
             muestra = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # Return success response with muestra data
+            response_data = {
+                'id': muestra.id,
+                'name': muestra.name,
+                'message': 'Muestra creada exitosamente',
+                'capturas': CapturaSerializer(muestra.captura_set.all(), many=True).data
+            }
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            logger.error(f"Error in UplimageView: {str(e)}")
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST

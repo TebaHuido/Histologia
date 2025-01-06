@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormGroupDirective, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../services/api.service';
 import { AuthService } from '../services/auth.service';
@@ -254,6 +254,8 @@ export class UploadXlsComponent implements OnInit {
 
   editAlumno(alumno: any): void {
     this.editingAlumno = { ...alumno };
+    this.alumnoForm = { ...alumno };
+    this.showNewAlumnoForm = true;
   }
 
   updateAlumno(alumno: any): void {
@@ -278,6 +280,7 @@ export class UploadXlsComponent implements OnInit {
           this.alumnos[index] = response;
         }
         this.editingAlumno = null;
+        this.showNewAlumnoForm = false;
       },
       error: (error: any) => {
         if (error.status === 403 && error.error.code === 'token_not_valid') {
@@ -353,6 +356,7 @@ export class UploadXlsComponent implements OnInit {
           if (index !== -1) {
             this.cursos[index] = response;
           }
+          this.updateCursosConEspecial(); // Ensure the special course list is updated
           this.resetCursoForm();
           this.isCreatingCurso = false;
         },
@@ -365,6 +369,7 @@ export class UploadXlsComponent implements OnInit {
       this.apiService.addCurso(this.cursoForm).subscribe({
         next: (response) => {
           this.cursos.push(response);
+          this.updateCursosConEspecial(); // Ensure the special course list is updated
           this.lastCreatedCurso = response;
           this.resetCursoForm();
           this.isCreatingCurso = false;
@@ -433,6 +438,7 @@ export class UploadXlsComponent implements OnInit {
     };
     this.editingCurso = null;
     this.showNewCursoForm = false;
+    this.selectedCurso = null;  // Ensure the course section is shown after resetting
   }
 
   cancelAlumnoEdit(): void {

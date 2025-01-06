@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams} from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { Tejido, Muestra, Label, Tag, Profesor, Alumno } from './tejidos.mock';
 import { AuthService } from './auth.service';
 
@@ -303,11 +303,45 @@ export class ApiService {
   }
 
   createLote(lote: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/lotes/`, lote, this.getAuthOptions());
+    // Ensure we're sending the correct payload structure
+    const payload = {
+      name: lote.name,
+      curso_ids: lote.cursoIds?.filter((id: any) => id !== null).map((id: any) => Number(id)) || [],
+      muestra_ids: lote.muestraIds?.filter((id: any) => id !== null).map((id: any) => Number(id)) || []
+    };
+
+    console.log('Sending create payload:', payload);  // Debug log
+
+    return this.http.post(`${this.apiUrl}/lotes/`, payload, this.getAuthOptions()).pipe(
+      tap(response => console.log('Create response:', response)),  // Debug log
+      catchError(error => {
+        console.error('Error creating lote:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   updateLote(id: number, lote: any): Observable<any> {
-    return this.http.put(`${this.apiUrl}/lotes/${id}/`, lote, this.getAuthOptions());
+    // Ensure we're only sending integer IDs
+    const payload = {
+      name: lote.name,
+      curso_ids: (lote.cursoIds || [])
+        .filter((id: any) => id !== null)
+        .map((id: any) => Number(id)),
+      muestra_ids: (lote.muestraIds || [])
+        .filter((id: any) => id !== null && !isNaN(parseInt(id)))
+        .map((id: any) => Number(id))
+    };
+
+    console.log('Sending update payload:', payload);
+
+    return this.http.put(`${this.apiUrl}/lotes/${id}/`, payload, this.getAuthOptions()).pipe(
+      tap(response => console.log('Update response:', response)),
+      catchError(error => {
+        console.error('Error updating lote:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   deleteLote(id: number): Observable<any> {

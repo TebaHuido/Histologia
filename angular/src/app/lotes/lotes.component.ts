@@ -95,6 +95,8 @@ export class LotesComponent implements OnInit {
   muestrasFiltradas: Muestra[] = [];
   muestrasFiltradas_edit: Muestra[] = []; // New array for edit mode
 
+  showCreateForm = false;  // Add this property
+
   constructor(private api: ApiService, public auth: AuthService) {}
 
   ngOnInit(): void {
@@ -299,16 +301,21 @@ export class LotesComponent implements OnInit {
     this.isLoading = true;
     const loteData = {
       name: this.newLote.name,
-      cursos: this.selectedCursos || [],
-      muestras: this.selectedMuestras || []
+      cursoIds: this.selectedCursos.filter(id => id !== null),  // Changed from cursos to cursoIds
+      muestraIds: this.selectedMuestras.filter(id => id !== null)  // Changed from muestras to muestraIds
     };
+
+    console.log('Creating lote with data:', loteData);  // Debug log
 
     this.api.createLote(loteData).subscribe({
       next: (response) => {
+        console.log('Create response:', response);  // Debug log
         this.lotes.push(response);
         this.newLote = {};
         this.selectedCursos = [];
         this.selectedMuestras = [];
+        this.loadLotes();  // Reload lotes to get fresh data
+        this.showCreateForm = false;  // Hide the form after successful creation
         this.isLoading = false;
         this.errorMessage = '';
       },
@@ -338,13 +345,23 @@ export class LotesComponent implements OnInit {
   editLote(lote: Lote): void {
     this.selectedLote = { ...lote };
     this.isEditing = true;
-    this.editSelectedMuestras = lote.muestras || [];
-    this.editSelectedCursos = lote.cursos || [];
-    this.muestrasFiltradas_edit = [...this.muestras]; // Initialize edit filtered list
+    // Asegurarnos de que tenemos las muestras y cursos correctos
+    this.editSelectedMuestras = lote.muestras_details?.map(m => m.id) || [];
+    this.editSelectedCursos = lote.cursos_details?.map(c => c.id) || [];
+    this.muestrasFiltradas_edit = [...this.muestras];
+    
+    console.log('Editing lote:', {
+      lote,
+      selectedMuestras: this.editSelectedMuestras,
+      selectedCursos: this.editSelectedCursos
+    });
   }
 
   updateLote(): void {
-    if (!this.selectedLote) return;
+    if (!this.selectedLote) {
+      this.errorMessage = 'No hay lote seleccionado para actualizar';
+      return;
+    }
 
     if (!this.selectedLote.name) {
       this.errorMessage = 'Por favor ingrese un nombre para el lote';
@@ -354,18 +371,23 @@ export class LotesComponent implements OnInit {
     this.isLoading = true;
     const loteData = {
       name: this.selectedLote.name,
-      cursos: this.editSelectedCursos || [],
-      muestras: this.editSelectedMuestras || []
+      cursoIds: this.editSelectedCursos,
+      muestraIds: this.editSelectedMuestras
     };
+
+    console.log('Updating lote with data:', loteData);
 
     this.api.updateLote(this.selectedLote.id, loteData).subscribe({
       next: (response) => {
+        console.log('Update response:', response);
         const index = this.lotes.findIndex(l => l.id === this.selectedLote!.id);
         if (index !== -1) {
           this.lotes[index] = response;
         }
+        this.loadLotes(); // Recargar los lotes para asegurar datos actualizados
         this.cancelEdit();
         this.isLoading = false;
+        this.errorMessage = '';
       },
       error: (error) => {
         this.errorMessage = 'Error al actualizar el lote';
@@ -427,5 +449,9 @@ export class LotesComponent implements OnInit {
   getMuestraName(muestraId: number): string {
     const muestra = this.muestras.find(m => m.id === muestraId);
     return muestra ? muestra.name : 'N/A';
+  }
+
+  toggleCreateForm(): void {
+    this.showCreateForm = !this.showCreateForm;
   }
 }

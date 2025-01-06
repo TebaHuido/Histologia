@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from .views import (
     LoginView, NotaViewSet, UploadXlsView, TagViewSet, 
-    LabelViewSet, MuestraViewSet, MuestraViewSet2
+    LabelViewSet, MuestraViewSet, MuestraViewSet2, LoteViewSet
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -16,12 +16,12 @@ router.register(r'categorias', views.CategoriaViewSet, basename='categorias')
 router.register(r'sistemas', views.SistemaViewSet, basename='sistemas')
 router.register(r'organos', views.OrganoViewSet, basename='organos')
 router.register(r'muestras', MuestraViewSet, basename='muestras')
-router.register(r'lotes', views.LoteViewSet, basename='lotes')
+router.register(r'lotes', LoteViewSet, basename='lote')
 router.register(r'alumnos', views.AlumnoViewSet, basename='alumnos')
 router.register(r'tinciones', views.TincionViewSet, basename='tinciones')
 router.register(r'tags', TagViewSet, basename='tags')
 router.register(r'labels', LabelViewSet, basename='labels')
-router.register(r'tejidos', MuestraViewSet2, basename='tejidos')  # Update this line
+router.register(r'tejidos', MuestraViewSet2, basename='tejidos')
 router.register(r'uplimage', views.UplImageViewSet, basename='uplimage')
 
 urlpatterns = [
@@ -40,6 +40,6 @@ urlpatterns = [
     path('alumnos/<int:pk>/remove-from-curso/', 
          views.AlumnoViewSet.as_view({'delete': 'remove_from_curso'}), 
          name='alumno-remove-from-curso'),
-    path('tejidos/', views.MuestraViewSet2.as_view({'get': 'list'}), name='tejido-list'),  # Update this line
+    path('tejidos/', views.MuestraViewSet2.as_view({'get': 'list'}), name='tejido-list'),
     path('', include(router.urls)),
-]
+] + router.urls

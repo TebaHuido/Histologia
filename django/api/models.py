@@ -137,12 +137,17 @@ class Muestra(models.Model):
         return f"Muestra: {self.name}"
 
 class Lote(models.Model):
-    name = models.CharField(max_length=100, verbose_name="Nombre")
-    cursos = models.ManyToManyField(Curso, related_name='lotes', blank=True)
-    muestras = models.ManyToManyField(Muestra, related_name='lotes_relacionados', blank=True)
+    name = models.CharField(max_length=255)
+    cursos = models.ManyToManyField(Curso, related_name='lotes')
+    muestras = models.ManyToManyField(Muestra, related_name='lotes')
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Do not assign cursos or muestras here
+        # They should be set using .set() method in serializers
 
     def __str__(self):
-        return f"Lote: {self.name}"
+        return self.name
     
 class Alumno(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
