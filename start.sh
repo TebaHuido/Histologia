@@ -23,8 +23,13 @@ cd "$HOME/histologia/django"
 source "$HOME/histologia/django/venv/bin/activate"
 python manage.py collectstatic --noinput
 
-# Iniciar Gunicorn para Django
-gunicorn drf.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon
+# Cargar variables de entorno
+if [ -f .env ]; then
+    export $(cat .env | xargs)
+fi
+
+# Iniciar Gunicorn para Django con variables de entorno
+gunicorn drf.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon --env SECRET_KEY="$SECRET_KEY"
 DJANGO_PID=$!
 
 # Iniciar Nginx

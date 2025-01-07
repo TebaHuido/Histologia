@@ -22,7 +22,7 @@ ROOT_URLCONF = 'drf.urls'
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&dfqs*fv5g#wm_%2#sgiworbisvjj2o4-nagbz%!m5gfbl##n2'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-secret-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
