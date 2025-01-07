@@ -30,14 +30,14 @@ DEBUG = False
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'histologia.sytes.net']  # Agregar tu dominio
 
 # Configuración de seguridad para producción
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = False  # Deshabilitar redirección a HTTPS
+SESSION_COOKIE_SECURE = False  # Deshabilitar cookies seguras
+CSRF_COOKIE_SECURE = False  # Deshabilitar cookies seguras
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SECURE_HSTS_SECONDS = 31536000  # 1 año
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SECURE_HSTS_SECONDS = 0  # Deshabilitar HSTS
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 
 # Application definition
 
