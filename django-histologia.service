@@ -1,0 +1,15 @@
+[Unit]
+Description=Django Histologia Service
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/x:/Proyectos/nHisto/Histologia/django
+Environment="PATH=/x:/Proyectos/nHisto/Histologia/django/venv/bin"
+ExecStart=/x:/Proyectos/nHisto/Histologia/django/venv/bin/gunicorn \
+    --workers 3 \
+    --bind unix:/run/gunicorn.sock \
+    drf.wsgi:application
+
+[Install]
+WantedBy=multi-user.target

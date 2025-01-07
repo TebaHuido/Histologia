@@ -1,0 +1,12 @@
+[Unit]
+Description=Angular Histologia Service
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/x:/Proyectos/nHisto/Histologia/angular
+ExecStart=/usr/bin/ng build --configuration=production
+Environment=PATH=/usr/bin
+
+[Install]
+WantedBy=multi-user.target
