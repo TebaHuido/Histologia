@@ -21,6 +21,12 @@ sudo npm install -g @angular/cli
 echo "Configurando directorios..."
 mkdir -p ~/histologia/{django,angular,images}
 
+# Copiar archivos del proyecto
+echo "Copiando archivos del proyecto..."
+cp -r django/* ~/histologia/django/
+cp -r angular/* ~/histologia/angular/
+cp -r images/* ~/histologia/images/
+
 # Configurar entorno virtual Python
 echo "Configurando entorno virtual Python..."
 python3 -m venv ~/histologia/django/venv
