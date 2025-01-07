@@ -27,16 +27,16 @@ sudo chmod -R 755 /var/www/histologia
 echo "Configurando entorno virtual Python..."
 python3 -m venv /var/www/histologia/django/venv
 source /var/www/histologia/django/venv/bin/activate
-pip install -r django/requirements.txt
+pip install -r /home/minero/Histologia/django/requirements.txt
 
 # Configurar servicios systemd
 echo "Configurando servicios systemd..."
-sudo cp django-histologia.service /etc/systemd/system/
-sudo cp angular-histologia.service /etc/systemd/system/
+sudo cp /home/minero/Histologia/django-histologia.service /etc/systemd/system/
+sudo cp /home/minero/Histologia/angular-histologia.service /etc/systemd/system/
 
 # Configurar Nginx
 echo "Configurando Nginx..."
-sudo cp nginx/conf.d/default.conf /etc/nginx/sites-available/histologia
+sudo cp /home/minero/Histologia/nginx/conf.d/default.conf /etc/nginx/sites-available/histologia
 sudo ln -s /etc/nginx/sites-available/histologia /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 
