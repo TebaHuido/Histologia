@@ -21,6 +21,10 @@ echo "Moviendo archivos de Angular a Nginx..."
 sudo cp -r dist/myapp/* /var/www/html/
 echo "Archivos de Angular movidos."
 
+# Verificar que los archivos se hayan copiado correctamente
+echo "Verificando que los archivos se hayan copiado correctamente..."
+ls /var/www/html
+
 # Recolectar archivos estáticos de Django
 cd "$HOME/histologia/django"
 source "$HOME/histologia/django/venv/bin/activate"
@@ -50,6 +54,15 @@ echo "Iniciando Nginx..."
 sudo nginx -g "daemon off;" &
 NGINX_PID=$!
 echo "Nginx iniciado."
+
+# Verificar que Gunicorn esté sirviendo la aplicación Django
+echo "Verificando que Gunicorn esté sirviendo la aplicación Django..."
+curl -I http://localhost:8000
+
+# Verificar que Nginx esté sirviendo la aplicación Angular y la API de Django
+echo "Verificando que Nginx esté sirviendo la aplicación Angular y la API de Django..."
+curl -I http://localhost
+curl -I http://localhost/api/
 
 # Esperar por los procesos
 wait "$NGINX_PID"
