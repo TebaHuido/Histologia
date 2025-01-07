@@ -41,6 +41,15 @@ python3 -m venv ~/histologia/django/venv
 source ~/histologia/django/venv/bin/activate
 pip install -r django/requirements.txt
 
+# Instalar Gunicorn para producción
+echo "Instalando Gunicorn..."
+pip install gunicorn
+
+# Crear directorio para archivos estáticos
+mkdir -p /var/www/html
+sudo chown -R $USER:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
+
 # Configurar Nginx
 echo "Configurando Nginx..."
 sudo cp nginx/conf.d/default.conf /etc/nginx/sites-available/histologia

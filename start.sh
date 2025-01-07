@@ -4,38 +4,32 @@
 cleanup() {
     echo "Apagando servicios..."
     kill -TERM "$DJANGO_PID" 2>/dev/null
-    kill -TERM "$ANGULAR_PID" 2>/dev/null
+    kill -TERM "$NGINX_PID" 2>/dev/null
     exit 0
 }
 
 trap cleanup SIGINT SIGTERM
 
-# Configurar autocompletado de Angular de manera silenciosa antes de iniciar servicios
-if ! grep -q "ng completion" ~/.bashrc; then
-    echo "Configurando autocompletado de Angular..."
-    ng completion > /tmp/ng_completion
-    cat /tmp/ng_completion >> ~/.bashrc
-    source ~/.bashrc
-    rm /tmp/ng_completion
-fi
+# Construir Angular para producción
+cd "$HOME/histologia/angular"
+echo "Construyendo Angular para producción..."
+ng build --configuration production
 
-# Activar entorno virtual e iniciar Django
+# Mover archivos de Angular a directorio de Nginx
+sudo cp -r dist/myapp/* /var/www/html/
+
+# Recolectar archivos estáticos de Django
 cd "$HOME/histologia/django"
 source "$HOME/histologia/django/venv/bin/activate"
-python manage.py runserver 0.0.0.0:8000 &
+python manage.py collectstatic --noinput
+
+# Iniciar Gunicorn para Django
+gunicorn drf.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon
 DJANGO_PID=$!
 
-# Iniciar Angular verificando la instalación
-cd "$HOME/histologia/angular"
-if [ ! -f "package.json" ]; then
-    echo "Error: No se encontró package.json en el directorio de Angular"
-    exit 1
-fi
-
-echo "Iniciando servidor Angular..."
-export NODE_OPTIONS=--max_old_space_size=4096
-ng serve --host 0.0.0.0 --port 4200 --disable-host-check &
-ANGULAR_PID=$!
+# Iniciar Nginx
+sudo nginx -g "daemon off;" &
+NGINX_PID=$!
 
 # Esperar por los procesos
-wait "$DJANGO_PID" "$ANGULAR_PID"
+wait "$NGINX_PID"
