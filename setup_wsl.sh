@@ -27,6 +27,14 @@ cp -r django/* ~/histologia/django/
 cp -r angular/* ~/histologia/angular/
 cp -r images/* ~/histologia/images/
 
+# Instalar dependencias de Angular
+echo "Instalando dependencias de Angular..."
+cd ~/histologia/angular
+npm install --legacy-peer-deps
+
+# Volver al directorio original para continuar con la instalación
+cd -
+
 # Configurar entorno virtual Python
 echo "Configurando entorno virtual Python..."
 python3 -m venv ~/histologia/django/venv
