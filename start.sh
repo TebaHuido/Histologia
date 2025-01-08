@@ -64,5 +64,12 @@ echo "Verificando que Nginx esté sirviendo la aplicación Angular y la API de D
 curl -I http://localhost
 curl -I http://localhost/api/
 
+# Verificar registros de Gunicorn y Nginx
+echo "Verificando registros de Gunicorn..."
+sudo journalctl -u gunicorn --since "5 minutes ago"
+
+echo "Verificando registros de Nginx..."
+sudo tail -n 50 /var/log/nginx/error.log
+
 # Esperar por los procesos
 wait "$NGINX_PID"
