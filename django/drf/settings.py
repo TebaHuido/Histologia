@@ -110,7 +110,7 @@ CSRF_COOKIE_DOMAIN = None  # Changed from 'localhost'
 CSRF_COOKIE_PATH = "/"
 CSRF_USE_SESSIONS = False  # Changed to False
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'None'  # Changed to 'None'
+CSRF_COOKIE_SAMESITE = 'None'  # Ensure this is set to 'None'
 CSRF_COOKIE_SECURE = True  # Ensure this is set to True for secure cookies
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
@@ -230,7 +230,7 @@ MEDIA_URL = '/images/'
 AUTH_USER_MODEL = 'api.CustomUser'
 
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'None'  # Changed to 'None'
+CSRF_COOKIE_SAMESITE = 'None'  # Ensure this is set to 'None'
 CSRF_COOKIE_SECURE = True  # Ensure this is set to True for secure cookies
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
