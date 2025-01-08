@@ -114,4 +114,7 @@ echo "Dando permisos de ejecución y ejecutando start.sh..."
 chmod +x start.sh
 ./start.sh
 
+# Borrar registros de Nginx
+sudo rm -f /var/log/nginx/*.log
+
 echo "¡Instalación completada!"
