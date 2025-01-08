@@ -79,6 +79,12 @@ sudo mkdir -p /run/gunicorn
 sudo chown www-data:www-data /run/gunicorn
 sudo chmod 755 /run/gunicorn
 
+# Crear directorio y archivo de registro de Gunicorn
+sudo mkdir -p /var/log/gunicorn
+sudo touch /var/log/gunicorn/error.log
+sudo chown -R www-data:www-data /var/log/gunicorn
+sudo chmod -R 755 /var/log/gunicorn
+
 # Establecer permisos para el socket de Gunicorn
 sudo mkdir -p $(dirname ~/histologia/django/gunicorn.sock)
 sudo chown www-data:www-data $(dirname ~/histologia/django/gunicorn.sock)
