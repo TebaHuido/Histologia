@@ -18,12 +18,12 @@ sudo chmod -R 755 /var/www/html
 # Construir Angular para producción
 cd "$HOME/histologia/angular"
 echo "Construyendo Angular para producción..."
-ng build --configuration production
+ng run myapp:browser --configuration production
 echo "Construcción de Angular completada."
 
 # Mover archivos de Angular a directorio de Nginx y establecer permisos
 echo "Moviendo archivos de Angular a Nginx..."
-sudo cp -r dist/myapp/* /var/www/html/
+sudo cp -r dist/myapp/browser/* /var/www/html/
 sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 

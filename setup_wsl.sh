@@ -109,6 +109,9 @@ echo "Reiniciando servicios..."
 sudo systemctl restart django-histologia
 sudo service nginx restart
 
+# Ajustar permisos del socket de Gunicorn
+sudo chmod 766 /home/minero/histologia/django/gunicorn.sock
+
 # Dar permisos de ejecución y ejecutar start.sh
 echo "Dando permisos de ejecución y ejecutando start.sh..."
 chmod +x start.sh
