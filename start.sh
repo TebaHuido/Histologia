@@ -55,8 +55,8 @@ fi
 
 # Detener procesos que están utilizando los puertos 80 y 8000
 echo "Deteniendo procesos que están utilizando los puertos 80 y 8000..."
-sudo fuser -k 80/tcp
-sudo fuser -k 8000/tcp
+sudo lsof -i :80 -t | xargs -r sudo kill -9
+sudo lsof -i :8000 -t | xargs -r sudo kill -9
 
 # Iniciar Gunicorn para Django con variables de entorno
 echo "Iniciando Gunicorn para Django..."
