@@ -15,6 +15,11 @@ sudo mkdir -p /var/www/html
 sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 
+# Asegurar que el directorio de trabajo de Django tenga los permisos correctos
+sudo mkdir -p /home/minero/histologia/django
+sudo chown -R www-data:www-data /home/minero/histologia/django
+sudo chmod -R 755 /home/minero/histologia/django
+
 # Construir Angular para producción
 cd "$HOME/Histologia/angular"
 echo "Construyendo Angular para producción..."

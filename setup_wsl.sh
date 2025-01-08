@@ -36,6 +36,11 @@ sudo chown -R $USER:$USER ~/Histologia/angular
 sudo chown -R www-data:www-data ~/Histologia/images
 sudo chmod -R 755 ~/Histologia
 
+# Asegurar que el directorio de trabajo de Django tenga los permisos correctos
+sudo mkdir -p /home/minero/histologia/django
+sudo chown -R www-data:www-data /home/minero/histologia/django
+sudo chmod -R 755 /home/minero/histologia/django
+
 # Instalar dependencias de Angular
 echo "Instalando dependencias de Angular..."
 cd ~/Histologia/angular
