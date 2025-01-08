@@ -67,14 +67,7 @@ MIDDLEWARE = [
 ]
 
 # Update CORS settings - remove duplicates and ensure correct configuration
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:80",
-    "http://localhost:4200",
-    "http://localhost",
-    "http://127.0.0.1:80",
-    "http://127.0.0.1:4200",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -108,6 +101,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:80",
     "http://localhost:4200",
     "http://localhost",
+    "http://127.0.0.1:",
     "http://127.0.0.1:80",
     "http://127.0.0.1:4200",
 ]
@@ -236,7 +230,7 @@ MEDIA_URL = '/images/'
 AUTH_USER_MODEL = 'api.CustomUser'
 
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'None'  # Changed to 'None'
 CSRF_COOKIE_SECURE = False  # Ensure this is set to False for local development
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
