@@ -18,7 +18,7 @@ sudo chmod -R 755 /var/www/html
 # Construir Angular para producción
 cd "$HOME/histologia/angular"
 echo "Construyendo Angular para producción..."
-ng run myapp:browser:production
+ng run myapp:build:production
 echo "Construcción de Angular completada."
 
 # Mover archivos de Angular a directorio de Nginx y establecer permisos
@@ -76,7 +76,7 @@ curl -I http://localhost/api/
 
 # Verificar registros de Gunicorn y Nginx
 echo "Verificando registros de Gunicorn..."
-sudo journalctl -u gunicorn --since "5 minutes ago"
+sudo journalctl -u django-histologia --since "5 minutes ago"
 
 echo "Verificando registros de Nginx..."
 sudo tail -n 50 /var/log/nginx/error.log
