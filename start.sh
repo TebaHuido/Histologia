@@ -27,7 +27,8 @@ sudo cp -r dist/myapp/browser/* /var/www/html/
 sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 
-# Verificar que los archivos se hayan copiado correctamente...
+# Verificar que los archivos se hayan copiado correctamente
+echo "Verificando que los archivos se hayan copiado correctamente..."
 ls /var/www/html
 
 # Asegurar que el directorio de archivos estáticos de Django tenga los permisos correctos
