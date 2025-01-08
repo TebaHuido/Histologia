@@ -50,7 +50,7 @@ fi
 
 # Iniciar Gunicorn para Django con variables de entorno
 echo "Iniciando Gunicorn para Django..."
-gunicorn drf.wsgi:application --bind 127.0.0.1:8000 --workers 3 --daemon --env SECRET_KEY="$SECRET_KEY"
+gunicorn drf.wsgi:application --bind 127.0.0.1:8000 --workers 3 --log-level debug --capture-output
 DJANGO_PID=$!
 echo "Gunicorn iniciado."
 
