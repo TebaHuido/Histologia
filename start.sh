@@ -16,7 +16,7 @@ sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 
 # Construir Angular para producción
-cd "$HOME/histologia/angular"
+cd "$HOME/Histologia/angular"
 echo "Construyendo Angular para producción..."
 ng run myapp:build:production
 echo "Construcción de Angular completada."
@@ -32,8 +32,8 @@ echo "Verificando que los archivos se hayan copiado correctamente..."
 ls /var/www/html
 
 # Recolectar archivos estáticos de Django
-cd "$HOME/histologia/django"
-source "$HOME/histologia/django/venv/bin/activate"
+cd "$HOME/Histologia/django"
+source "$HOME/Histologia/django/venv/bin/activate"
 echo "Recolectando archivos estáticos de Django..."
 python manage.py collectstatic --noinput
 echo "Archivos estáticos de Django recolectados."
