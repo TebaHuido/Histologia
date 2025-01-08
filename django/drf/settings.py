@@ -32,7 +32,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'histologia.sytes.net']  # Agregar tu
 # Configuración de seguridad para producción
 SECURE_SSL_REDIRECT = False  # Deshabilitar redirección a HTTPS
 SESSION_COOKIE_SECURE = False  # Deshabilitar cookies seguras
-CSRF_COOKIE_SECURE = False  # Deshabilitar cookies seguras
+CSRF_COOKIE_SECURE = True  # Ensure this is set to True for secure cookies
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_SECONDS = 0  # Deshabilitar HSTS
@@ -110,8 +110,8 @@ CSRF_COOKIE_DOMAIN = None  # Changed from 'localhost'
 CSRF_COOKIE_PATH = "/"
 CSRF_USE_SESSIONS = False  # Changed to False
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = 'None'  # Changed to 'None'
+CSRF_COOKIE_SECURE = True  # Ensure this is set to True for secure cookies
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
 
@@ -231,7 +231,7 @@ AUTH_USER_MODEL = 'api.CustomUser'
 
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'None'  # Changed to 'None'
-CSRF_COOKIE_SECURE = False  # Ensure this is set to False for local development
+CSRF_COOKIE_SECURE = True  # Ensure this is set to True for secure cookies
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_COOKIE_AGE = 3600  # 1 hour in seconds
