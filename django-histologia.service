@@ -12,6 +12,7 @@ ExecStart=/home/minero/histologia/django/venv/bin/gunicorn \
     --bind 127.0.0.1:8000 \
     --access-logfile /var/log/gunicorn/access.log \
     --error-logfile /var/log/gunicorn/error.log \
+    --log-level debug \
     drf.wsgi:application
 
 [Install]
