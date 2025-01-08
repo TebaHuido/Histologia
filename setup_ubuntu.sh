@@ -29,6 +29,10 @@ python3 -m venv /var/www/histologia/django/venv
 source /var/www/histologia/django/venv/bin/activate
 pip install -r /home/minero/Histologia/django/requirements.txt
 
+# Generar archivo .env con clave secreta
+echo "Generando archivo .env con clave secreta..."
+echo "SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')" > /var/www/histologia/django/.env
+
 # Configurar servicios systemd
 echo "Configurando servicios systemd..."
 sudo cp /home/minero/Histologia/django-histologia.service /etc/systemd/system/
