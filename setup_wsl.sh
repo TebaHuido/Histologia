@@ -50,7 +50,8 @@ echo "Instalando Gunicorn..."
 pip install gunicorn
 
 # Crear directorio para archivos estáticos
-mkdir -p /var/www/html
+echo "Creando directorio para archivos estáticos..."
+sudo mkdir -p /var/www/html
 sudo chown -R $USER:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 
@@ -61,6 +62,7 @@ sudo ln -sf /etc/nginx/sites-available/histologia /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 
 # Reiniciar Nginx
+echo "Reiniciando Nginx..."
 sudo service nginx restart
 
 # Dar permisos de ejecución y ejecutar start.sh
