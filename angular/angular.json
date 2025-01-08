@@ -28,6 +28,15 @@
               "src/styles.css"
             ],
             "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "outputPath": "dist/myapp/browser",
+              "optimization": true,
+              "buildOptimizer": true,
+              "aot": true,
+              "extractLicenses": true
+            }
           }
         }
       }
