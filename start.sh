@@ -23,7 +23,7 @@ echo "Construcción de Angular completada."
 
 # Mover archivos de Angular a directorio de Nginx y establecer permisos
 echo "Moviendo archivos de Angular a Nginx..."
-sudo cp -r dist/myapp/browser/* /var/www/html/
+sudo cp -r dist/myapp/build/* /var/www/html/
 sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 
