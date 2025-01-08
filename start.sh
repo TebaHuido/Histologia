@@ -27,9 +27,13 @@ sudo cp -r dist/myapp/browser/* /var/www/html/
 sudo chown -R www-data:www-data /var/www/html
 sudo chmod -R 755 /var/www/html
 
-# Verificar que los archivos se hayan copiado correctamente
-echo "Verificando que los archivos se hayan copiado correctamente..."
+# Verificar que los archivos se hayan copiado correctamente...
 ls /var/www/html
+
+# Asegurar que el directorio de archivos estáticos de Django tenga los permisos correctos
+sudo mkdir -p /home/minero/Histologia/django/staticfiles
+sudo chown -R www-data:www-data /home/minero/Histologia/django/staticfiles
+sudo chmod -R 755 /home/minero/Histologia/django/staticfiles
 
 # Recolectar archivos estáticos de Django
 cd "$HOME/Histologia/django"
