@@ -9,7 +9,7 @@ WorkingDirectory=/home/minero/histologia/django
 Environment="PATH=/home/minero/histologia/django/venv/bin"
 ExecStart=/home/minero/histologia/django/venv/bin/gunicorn \
     --workers 3 \
-    --bind 127.0.0.1:8000 \
+    --bind localhost:8000 \
     --access-logfile /var/log/gunicorn/access.log \
     --error-logfile /var/log/gunicorn/error.log \
     --log-level debug \
