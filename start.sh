@@ -38,6 +38,10 @@ echo "Recolectando archivos estáticos de Django..."
 python manage.py collectstatic --noinput
 echo "Archivos estáticos de Django recolectados."
 
+echo "Aplicando migraciones de Django..."
+python manage.py migrate
+echo "Migraciones aplicadas."
+
 # Cargar variables de entorno
 if [ -f .env ]; then
     export $(cat .env | xargs)
