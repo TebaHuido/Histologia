@@ -220,17 +220,8 @@ USE_TZ = True
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-
 # Define la ruta completa a la carpeta donde Nginx almacena los archivos
 MEDIA_ROOT = os.path.join(BASE_DIR, '../../../var/www/html/images')
-
-# Define la URL pública para acceder a los archivos (en Nginx)
 MEDIA_URL = '/images/'
 
 AUTH_USER_MODEL = 'api.CustomUser'
