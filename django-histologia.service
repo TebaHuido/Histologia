@@ -7,7 +7,12 @@ User=www-data
 Group=www-data
 WorkingDirectory=/home/minero/histologia/django
 Environment="PATH=/home/minero/histologia/django/venv/bin"
-ExecStart=/home/minero/histologia/django/venv/bin/gunicorn --workers 3 --bind unix:/home/minero/histologia/django/gunicorn.sock drf.wsgi:application
+ExecStart=/home/minero/histologia/django/venv/bin/gunicorn \
+    --access-logfile /var/log/gunicorn/access.log \
+    --error-logfile /var/log/gunicorn/error.log \
+    --workers 3 \
+    --bind 127.0.0.1:8000 \
+    drf.wsgi:application
 
 [Install]
 WantedBy=multi-user.target

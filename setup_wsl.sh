@@ -84,6 +84,26 @@ sudo mkdir -p $(dirname ~/histologia/django/gunicorn.sock)
 sudo chown www-data:www-data $(dirname ~/histologia/django/gunicorn.sock)
 sudo chmod 755 $(dirname ~/histologia/django/gunicorn.sock)
 
+# Crear archivos de error
+echo "Creando archivos de error..."
+sudo mkdir -p /var/www/html
+echo "<h1>403 Forbidden</h1>" | sudo tee /var/www/html/403.html
+echo "<h1>404 Not Found</h1>" | sudo tee /var/www/html/404.html
+echo "<h1>500 Internal Server Error</h1>" | sudo tee /var/www/html/50x.html
+
+# Establecer permisos correctos
+echo "Estableciendo permisos..."
+sudo chown -R www-data:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
+
+sudo chown -R www-data:www-data /home/minero/histologia/django
+sudo chmod -R 755 /home/minero/histologia/django
+
+# Asegurar que el socket de Gunicorn tenga los permisos correctos
+sudo mkdir -p /run/gunicorn
+sudo chown www-data:www-data /run/gunicorn
+sudo chmod 755 /run/gunicorn
+
 # Reiniciar servicios
 echo "Reiniciando servicios..."
 sudo systemctl restart django-histologia
