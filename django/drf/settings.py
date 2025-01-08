@@ -221,7 +221,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
 # Define la ruta completa a la carpeta donde Nginx almacena los archivos
-MEDIA_ROOT = os.path.join(BASE_DIR, '../../../var/www/html/images')
+MEDIA_ROOT = os.path.join(BASE_DIR, '../../../home/minero/histologia/images')
 MEDIA_URL = '/images/'
 
 AUTH_USER_MODEL = 'api.CustomUser'
