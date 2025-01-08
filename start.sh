@@ -53,9 +53,14 @@ if [ -f .env ]; then
     echo "Variables de entorno cargadas."
 fi
 
+# Detener procesos que están utilizando los puertos 80 y 8000
+echo "Deteniendo procesos que están utilizando los puertos 80 y 8000..."
+sudo fuser -k 80/tcp
+sudo fuser -k 8000/tcp
+
 # Iniciar Gunicorn para Django con variables de entorno
 echo "Iniciando Gunicorn para Django..."
-gunicorn drf.wsgi:application --bind 127.0.0.1:8000 --workers 3 --log-level debug --capture-output
+gunicorn drf.wsgi:application --bind 127.0.0.1:8000 --workers 3 --log-level debug --capture-output &
 DJANGO_PID=$!
 echo "Gunicorn iniciado."
 
