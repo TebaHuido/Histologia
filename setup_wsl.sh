@@ -17,15 +17,24 @@ sudo apt install -y nodejs
 echo "Instalando Angular CLI..."
 sudo npm install -g @angular/cli
 
-# Crear estructura en el home del usuario
+# Crear estructura en el home del usuario y establecer permisos
 echo "Configurando directorios..."
 mkdir -p ~/histologia/{django,angular,images}
+sudo chown -R $USER:$USER ~/histologia
+sudo chmod -R 755 ~/histologia
 
-# Copiar archivos del proyecto
-echo "Copiando archivos del proyecto..."
-cp -r django/* ~/histologia/django/
-cp -r angular/* ~/histologia/angular/
-cp -r images/* ~/histologia/images/
+# Crear directorio para archivos estáticos y establecer permisos
+echo "Creando directorio para archivos estáticos..."
+sudo mkdir -p /var/www/html
+sudo mkdir -p /var/www/histologia/django/staticfiles
+sudo chown -R www-data:www-data /var/www
+sudo chmod -R 755 /var/www
+
+# Establecer permisos para los archivos copiados
+sudo chown -R $USER:$USER ~/histologia/django
+sudo chown -R $USER:$USER ~/histologia/angular
+sudo chown -R www-data:www-data ~/histologia/images
+sudo chmod -R 755 ~/histologia
 
 # Instalar dependencias de Angular
 echo "Instalando dependencias de Angular..."
@@ -38,6 +47,7 @@ cd -
 # Configurar entorno virtual Python
 echo "Configurando entorno virtual Python..."
 python3 -m venv ~/histologia/django/venv
+sudo chown -R $USER:$USER ~/histologia/django/venv
 source ~/histologia/django/venv/bin/activate
 pip install --upgrade pip
 pip install -r django/requirements.txt
@@ -45,16 +55,12 @@ pip install -r django/requirements.txt
 # Generar archivo .env con clave secreta
 echo "Generando archivo .env con clave secreta..."
 echo "SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')" > ~/histologia/django/.env
+sudo chown $USER:$USER ~/histologia/django/.env
+sudo chmod 600 ~/histologia/django/.env
 
 # Instalar Gunicorn para producción
 echo "Instalando Gunicorn..."
 pip install gunicorn
-
-# Crear directorio para archivos estáticos
-echo "Creando directorio para archivos estáticos..."
-sudo mkdir -p /var/www/html
-sudo chown -R $USER:www-data /var/www/html
-sudo chmod -R 755 /var/www/html
 
 # Configurar Nginx
 echo "Configurando Nginx..."
@@ -67,10 +73,20 @@ echo "Configurando y habilitando el servicio de Gunicorn..."
 sudo cp django-histologia.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable django-histologia
-sudo systemctl start django-histologia
 
-# Reiniciar Nginx
-echo "Reiniciando Nginx..."
+# Crear directorio para el socket de Gunicorn
+sudo mkdir -p /run/gunicorn
+sudo chown www-data:www-data /run/gunicorn
+sudo chmod 755 /run/gunicorn
+
+# Establecer permisos para el socket de Gunicorn
+sudo mkdir -p $(dirname ~/histologia/django/gunicorn.sock)
+sudo chown www-data:www-data $(dirname ~/histologia/django/gunicorn.sock)
+sudo chmod 755 $(dirname ~/histologia/django/gunicorn.sock)
+
+# Reiniciar servicios
+echo "Reiniciando servicios..."
+sudo systemctl restart django-histologia
 sudo service nginx restart
 
 # Dar permisos de ejecución y ejecutar start.sh
