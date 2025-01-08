@@ -1,15 +1,13 @@
 [Unit]
-Description=Django Histologia Service
+Description=Gunicorn instance to serve Django Histologia
 After=network.target
 
 [Service]
 User=www-data
-WorkingDirectory=/x:/Proyectos/nHisto/Histologia/django
-Environment="PATH=/x:/Proyectos/nHisto/Histologia/django/venv/bin"
-ExecStart=/x:/Proyectos/nHisto/Histologia/django/venv/bin/gunicorn \
-    --workers 3 \
-    --bind unix:/run/gunicorn.sock \
-    drf.wsgi:application
+Group=www-data
+WorkingDirectory=/home/minero/histologia/django
+Environment="PATH=/home/minero/histologia/django/venv/bin"
+ExecStart=/home/minero/histologia/django/venv/bin/gunicorn --workers 3 --bind unix:/home/minero/histologia/django/gunicorn.sock drf.wsgi:application
 
 [Install]
 WantedBy=multi-user.target

@@ -39,6 +39,7 @@ cd -
 echo "Configurando entorno virtual Python..."
 python3 -m venv ~/histologia/django/venv
 source ~/histologia/django/venv/bin/activate
+pip install --upgrade pip
 pip install -r django/requirements.txt
 
 # Generar archivo .env con clave secreta
@@ -60,6 +61,13 @@ echo "Configurando Nginx..."
 sudo cp nginx/conf.d/default.conf /etc/nginx/sites-available/histologia
 sudo ln -sf /etc/nginx/sites-available/histologia /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
+
+# Configurar y habilitar el servicio de Gunicorn
+echo "Configurando y habilitando el servicio de Gunicorn..."
+sudo cp django-histologia.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable django-histologia
+sudo systemctl start django-histologia
 
 # Reiniciar Nginx
 echo "Reiniciando Nginx..."
