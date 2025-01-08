@@ -32,7 +32,7 @@ ls /var/www/html
 
 # Asegurar que el directorio de archivos estáticos de Django tenga los permisos correctos
 sudo mkdir -p /home/minero/Histologia/django/staticfiles
-sudo chown -R www-data:www-data /home/minero/Histologia/django/staticfiles
+sudo chown -R $USER:$USER /home/minero/Histologia/django/staticfiles
 sudo chmod -R 755 /home/minero/Histologia/django/staticfiles
 
 # Recolectar archivos estáticos de Django
