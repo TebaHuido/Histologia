@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'api',
+    'api',  # Asegúrate de que la app 'api' esté incluida
     'rest_framework',
     'corsheaders'
 ]
