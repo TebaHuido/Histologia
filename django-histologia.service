@@ -8,10 +8,10 @@ Group=www-data
 WorkingDirectory=/home/minero/histologia/django
 Environment="PATH=/home/minero/histologia/django/venv/bin"
 ExecStart=/home/minero/histologia/django/venv/bin/gunicorn \
-    --access-logfile /var/log/gunicorn/access.log \
-    --error-logfile /var/log/gunicorn/error.log \
     --workers 3 \
     --bind 127.0.0.1:8000 \
+    --access-logfile /var/log/gunicorn/access.log \
+    --error-logfile /var/log/gunicorn/error.log \
     drf.wsgi:application
 
 [Install]

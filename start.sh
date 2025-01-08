@@ -10,16 +10,22 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM
 
+# Asegurar que los directorios existan y tengan los permisos correctos
+sudo mkdir -p /var/www/html
+sudo chown -R www-data:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
+
 # Construir Angular para producción
 cd "$HOME/histologia/angular"
 echo "Construyendo Angular para producción..."
 ng build --configuration production
 echo "Construcción de Angular completada."
 
-# Mover archivos de Angular a directorio de Nginx
+# Mover archivos de Angular a directorio de Nginx y establecer permisos
 echo "Moviendo archivos de Angular a Nginx..."
 sudo cp -r dist/myapp/* /var/www/html/
-echo "Archivos de Angular movidos."
+sudo chown -R www-data:www-data /var/www/html
+sudo chmod -R 755 /var/www/html
 
 # Verificar que los archivos se hayan copiado correctamente
 echo "Verificando que los archivos se hayan copiado correctamente..."
@@ -40,7 +46,7 @@ fi
 
 # Iniciar Gunicorn para Django con variables de entorno
 echo "Iniciando Gunicorn para Django..."
-gunicorn drf.wsgi:application --bind 0.0.0.0:8000 --workers 3 --daemon --env SECRET_KEY="$SECRET_KEY"
+gunicorn drf.wsgi:application --bind 127.0.0.1:8000 --workers 3 --daemon --env SECRET_KEY="$SECRET_KEY"
 DJANGO_PID=$!
 echo "Gunicorn iniciado."
 
