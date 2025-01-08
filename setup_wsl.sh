@@ -41,6 +41,10 @@ python3 -m venv ~/histologia/django/venv
 source ~/histologia/django/venv/bin/activate
 pip install -r django/requirements.txt
 
+# Generar archivo .env con clave secreta
+echo "Generando archivo .env con clave secreta..."
+echo "SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')" > ~/histologia/django/.env
+
 # Instalar Gunicorn para producción
 echo "Instalando Gunicorn..."
 pip install gunicorn
@@ -58,5 +62,10 @@ sudo rm -f /etc/nginx/sites-enabled/default
 
 # Reiniciar Nginx
 sudo service nginx restart
+
+# Dar permisos de ejecución y ejecutar start.sh
+echo "Dando permisos de ejecución y ejecutando start.sh..."
+chmod +x start.sh
+./start.sh
 
 echo "¡Instalación completada!"
