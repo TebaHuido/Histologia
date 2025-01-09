@@ -11,29 +11,14 @@ class CORSMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        origin = request.headers.get('Origin')
-
-        allowed_origins = [
-            "http://localhost:80",
-            "http://localhost:4200",
-            "http://localhost",
-            "http://127.0.0.1:80",
-        ]
-
-        if origin in allowed_origins:
-            response["Access-Control-Allow-Origin"] = origin
-            response["Access-Control-Allow-Credentials"] = "true"
-            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            response["Access-Control-Allow-Headers"] = (
-                "Origin, X-Requested-With, Content-Type, Accept, Authorization, "
-                "X-CSRFToken"
-            )
-            response["Access-Control-Expose-Headers"] = "Content-Type, X-CSRFToken"
-            
-            if request.method == "OPTIONS":
-                response["Access-Control-Max-Age"] = "1728000"
-                response.status_code = 204
-
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRFToken"
+        response["Access-Control-Allow-Credentials"] = "true"
+        response["Access-Control-Expose-Headers"] = "Content-Type, X-CSRFToken"
+        
+        if request.method == "OPTIONS":
+            response.status_code = 200
         return response
 
 class AuthenticationMiddleware(MiddlewareMixin):

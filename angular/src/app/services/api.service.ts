@@ -27,7 +27,7 @@ export interface UpdateMuestraResponse {
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = 'http://localhost:8000/api';  // ensure this matches your Django server
+  private apiUrl = '/api';  // Cambiado a URL relativa
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 

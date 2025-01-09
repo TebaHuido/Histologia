@@ -3,7 +3,7 @@ FROM minero420/adnbase:latest
 
 # Instalar dependencias adicionales necesarias para venv
 USER root
-RUN apt-get update && apt-get install -y python3.11-venv
+RUN apt-get update && apt-get install -y python3.11-venv netcat-traditional
 
 # Configurar directorio de trabajo para Django
 WORKDIR /usr/src/app/django
@@ -40,11 +40,12 @@ RUN npm install esbuild@0.23.0 --save-exact
 COPY ./angular /usr/src/app/angular
 
 # Construir la aplicación Angular para producción
-RUN ng build --configuration=production --delete-output-path --output-path=/usr/src/app/angular/dist
+RUN ng build --configuration=production --delete-output-path --output-path=/usr/src/app/angular/dist/myapp
 
 # Crear el directorio 'images' dentro de Nginx y asignar los permisos adecuados
 RUN mkdir -p /usr/share/nginx/html/images && \
-    chown -R www-data:www-data /usr/share/nginx/html/images
+    chown -R www-data:www-data /usr/share/nginx/html/images && \
+    chmod 755 /usr/share/nginx/html/images
 
 # Exponer puertos para Nginx, que manejará tanto el frontend como el backend
 EXPOSE 80

@@ -3,16 +3,21 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, throwError } from 'rxjs';
 import { tap, switchMap, catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { LoginResponse } from '../interfaces/auth.interface';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private baseUrl = 'http://localhost:8000/api'; // Cambia esto a tu URL de backend
+  private baseUrl = '/api';  // Volver a usar URL relativa
   private tokenKey = 'auth_token';
   private refreshTokenKey = 'refresh_token';
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) {
+    // Usar URL absoluta para asegurar que llegue al servidor correcto
+    this.baseUrl = `http://${window.location.hostname}/api`;
+  }
 
   requestCSRFToken(): Observable<any> {
     return this.http.get(`${this.baseUrl}/csrf/`, { withCredentials: true });
@@ -34,31 +39,34 @@ export class AuthService {
     return null;
   }
 
-  login(username: string, password: string): Observable<any> {
-    // Primero obtener el token CSRF
-    return this.requestCSRFToken().pipe(
-      switchMap(() => {
-        const headers = new HttpHeaders({
-          'Content-Type': 'application/json',
-          'X-CSRFToken': this.getCSRFToken() || ''
-        });
+  login(username: string, password: string): Observable<LoginResponse> {
+    console.log('Attempting login to:', this.baseUrl); // Debug log
 
-        return this.http.post(
-          `${this.baseUrl}/login/`, 
-          { username, password },
-          { 
-            headers,
-            withCredentials: true 
-          }
-        );
-      }),
-      tap((response: any) => {
-        this.setToken(response.access);
-        this.setRefreshToken(response.refresh);
-        this.setUser(response.user);
-        if (response.csrfToken) {
-          localStorage.setItem('csrfToken', response.csrfToken);
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+    });
+
+    const options = {
+      headers: headers,
+      withCredentials: true
+    };
+
+    return this.http.post<LoginResponse>(
+      `${this.baseUrl}/login/`, 
+      { username, password },
+      options
+    ).pipe(
+      tap((response: LoginResponse) => {
+        console.log('Login response:', response);
+        if (response) {
+          this.setToken(response.access);
+          this.setRefreshToken(response.refresh);
+          this.setUser(response.user);
         }
+      }),
+      catchError(error => {
+        console.error('Login error details:', error);
+        return throwError(() => error);
       })
     );
   }

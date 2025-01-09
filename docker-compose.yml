@@ -4,11 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "80:80"
-      - "8000:8000"
+      - "80:80"    # Nginx
+      - "8000:8000" # Django
       - "4200:4200"
     container_name: adnhisto
     volumes:
       - ./django/db:/usr/src/app/django/db
-      - ./images:/usr/share/nginx/html/images
+      - ./images:/usr/share/nginx/html/images:rw  # Agregar :rw para asegurar permisos de escritura
     mem_limit: 5G
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

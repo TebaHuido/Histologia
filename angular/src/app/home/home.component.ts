@@ -6,6 +6,7 @@ import { FilterComponent } from '../filter/filter.component';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';  // Agregar esta importación
 import { RouterModule } from '@angular/router';  // Add this import
+import { ConfigService } from '../services/config.service';  // Agregar esta importación
 
 @Component({
   selector: 'app-home',
@@ -44,7 +45,8 @@ export class HomeComponent implements OnInit {
   constructor(
     private api: ApiService, 
     public authService: AuthService,  // Change from private to public
-    private router: Router  // Agregar Router al constructor
+    private router: Router,  // Agregar Router al constructor
+    private config: ConfigService  // Agregar ConfigService
   ) {}
 
   ngOnInit(): void {
@@ -58,9 +60,10 @@ export class HomeComponent implements OnInit {
   }
 
   handleImageError(event: Event): void {
-    const target = event.target as HTMLImageElement;
-    if (!target.src.endsWith('/assets/images/no-image.png')) {
-      target.src = '/assets/images/no-image.png';
+    const img = event.target as HTMLImageElement;
+    if (!img.src.includes('/assets/images/no-image.png')) {
+      img.src = '/assets/images/no-image.png';
+      console.warn('Image load failed:', img.src);
     }
   }
 
@@ -265,14 +268,30 @@ export class HomeComponent implements OnInit {
   }
 
   getImageUrl(muestra: Tejido): string {
-    const baseUrl = 'http://localhost:80';
+    if (!muestra) return '/assets/images/no-image.png';
+    
+    const baseUrl = this.config.getBaseUrl();
+    
+    // Si la URL comienza con http, usarla directamente
+    if (muestra.imagenUrl?.startsWith('http')) {
+      return muestra.imagenUrl;
+    }
+  
+    // Si tenemos una URL relativa, construirla con la IP del servidor
     if (muestra.imagenUrl) {
-      return `${baseUrl}${muestra.imagenUrl}`;
+      return muestra.imagenUrl.startsWith('/') ? 
+        `${baseUrl}${muestra.imagenUrl}` : 
+        `${baseUrl}/${muestra.imagenUrl}`;
     }
-    // Use the first capture if available
+  
+    // Si hay capturas, usar la primera
     if (muestra.capturas && muestra.capturas.length > 0) {
-      return `${baseUrl}${muestra.capturas[0].image}`;
+      const capturaUrl = muestra.capturas[0].image;
+      return capturaUrl.startsWith('/') ? 
+        `${baseUrl}${capturaUrl}` : 
+        `${baseUrl}/${capturaUrl}`;
     }
+  
     return '/assets/images/no-image.png';
   }
 }

@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-&dfqs*fv5g#wm_%2#sgiworbisvjj2o4-nagbz%!m5gfbl##n2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*']  # En desarrollo, permite todos los hosts
 
 
 # Application definition
@@ -58,11 +58,15 @@ MIDDLEWARE = [
 ]
 
 # Update CORS settings - remove duplicates and ensure correct configuration
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True  # Solo en desarrollo
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost",
     "http://localhost:80",
     "http://localhost:4200",
-    "http://localhost",
+    "http://127.0.0.1",
+    "http://127.0.0.1:80",
+    "http://192.168.1.91",
+    "http://192.168.1.91:80",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -94,17 +98,16 @@ CORS_ALLOW_METHODS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:80",
-    "http://localhost:4200",
     "http://localhost",
-    "http://127.0.0.1:80",
+    "http://127.0.0.1",
+    "http://192.168.1.91",
 ]
 
 CSRF_COOKIE_DOMAIN = None  # Changed from 'localhost'
 CSRF_COOKIE_PATH = "/"
 CSRF_USE_SESSIONS = False  # Changed to False
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = None  # Changed from 'Lax'
 CSRF_COOKIE_SECURE = False
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
@@ -206,9 +209,16 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
+STATIC_URL = '/static/'
+STATIC_ROOT = None  # Set to None since we're not using static files
 
-STATIC_URL = 'static/'
+# Media files configuration
+MEDIA_ROOT = os.path.join(BASE_DIR, '../../../share/nginx/html/images')
+MEDIA_URL = '/images/'
+
+# Asegurar que Django puede escribir en el directorio
+MEDIA_ROOT_MODE = 0o755
+os.makedirs(MEDIA_ROOT, mode=MEDIA_ROOT_MODE, exist_ok=True)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -217,16 +227,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
-# Define la ruta completa a la carpeta donde Nginx almacena los archivos
-MEDIA_ROOT = os.path.join(BASE_DIR, '../../../share/nginx/html/images')
-
-# Define la URL pública para acceder a los archivos (en Nginx)
-MEDIA_URL = '/images/'
-
 AUTH_USER_MODEL = 'api.CustomUser'
 
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = None  # Changed from 'Lax'
 CSRF_COOKIE_SECURE = False  # Ensure this is set to False for local development
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
@@ -239,3 +243,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'histologiautaweb@gmail.com'
 EMAIL_HOST_PASSWORD = 'SysadminS3ba7le 1'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+SESSION_COOKIE_SAMESITE = None
+SESSION_COOKIE_SECURE = False
