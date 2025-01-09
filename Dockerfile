@@ -29,14 +29,18 @@ WORKDIR /usr/src/app/angular
 # Copiar solo package.json y package-lock.json para cachear dependencias de Angular
 COPY ./angular/package*.json /usr/src/app/angular/
 
-# Instalar las dependencias de Angular
-RUN npm install --legacy-peer-deps --verbose
+# Update Angular installation commands
+RUN npm cache clean --force
+RUN npm install --legacy-peer-deps
+RUN npm install @angular/compiler@18.0.0 @angular/compiler-cli@18.0.0 --save-exact
+RUN npm install @angular-devkit/build-angular@18.0.1 --save-exact
+RUN npm install esbuild@0.23.0 --save-exact
 
 # Copiar el resto de los archivos de Angular
 COPY ./angular /usr/src/app/angular
 
 # Construir la aplicación Angular para producción
-RUN ng build
+RUN ng build --configuration=production --delete-output-path --output-path=/usr/src/app/angular/dist
 
 # Crear el directorio 'images' dentro de Nginx y asignar los permisos adecuados
 RUN mkdir -p /usr/share/nginx/html/images && \
