@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Imágenes</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="text-gray-900" style="background-color:#99f6e4">
+    <header class="text-black py-4 mb-6"style="background-color:#0d9488">
+        <div class="container mx-auto">
+            <h1 class="text-4xl font-bold">Lista de Imágenes</h1>
+        </div>
+    </header>
+    <div class="container mx-auto p-4">
+        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for imagen in imagenes %}
+                <li class="bg-white rounded-lg shadow-lg p-4">
+                    <a href="/lista_capturas_muestra/{{ imagen.muestra.id }}" class="text-blue-500 hover:underline">
+                        <h2 class="text-xl font-semibold mb-2">{{ imagen.muestra.name }}</h2>
+                    </a>
+                    <img src="http://localhost/images/{{ imagen.get_filename }}" alt="{{ imagen.muestra.name }}" class="w-full h-64 object-cover rounded-md">
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

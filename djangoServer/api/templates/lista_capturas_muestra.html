@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capturas de {{ muestra.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="text-gray-900" style="background-color:#99f6e4">
+    <header class="text-black py-4 mb-6" style="background-color:#0d9488">
+        <div class="container mx-auto">
+            <h1 class="text-4xl font-bold">Capturas de {{ muestra.name }}</h1>
+        </div>
+    </header>
+    <div class="container mx-auto p-4">
+        <div class="mb-4">
+            <h2 class="text-2xl font-semibold">Información de la Muestra</h2>
+            <p><strong>Nombre:</strong> {{ muestra.name }}</p>
+            <p><strong>Categorías:</strong> {% for categoria in categorias %} {{ categoria.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+            <p><strong>Sistemas:</strong> {% for sistema in sistemas %} {{ sistema }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+            <p><strong>Órganos:</strong> {% for organo in organos %} {{ organo.orgname }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+        </div>
+        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for captura in capturas %}
+                <li class="bg-white rounded-lg shadow-lg p-4">
+                    <a href="http://localhost/images/{{ captura.get_filename }}" class="text-blue-500 hover:underline">
+                        <h2 class="text-xl font-semibold mb-2">{{ captura.name }}</h2>
+                    </a>
+                    <img src="http://localhost/images/{{ captura.get_filename }}" alt="{{ captura.name }}" class="w-full h-64 object-cover rounded-md">
+                    <p class="text-gray-700 mt-2">Aumento: {{ captura.aumento }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>
