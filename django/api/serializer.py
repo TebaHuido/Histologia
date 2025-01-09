@@ -453,6 +453,7 @@ class UplImageMuestraSerializer(serializers.ModelSerializer):
             raise
 
 class AlumnoSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)  # Usamos el UserSerializer completo
     curso = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Curso.objects.all()

@@ -19,6 +19,7 @@ interface IAlumno {
   name: string;
   user: {
     email: string;
+    username: string;  // Agregamos el campo username
   };
 }
 
@@ -46,7 +47,8 @@ export class UploadXlsComponent implements OnInit {
   alumnoForm: IAlumno = {
     name: '',
     user: {
-      email: ''
+      email: '',
+      username: ''  // Add username initialization
     }
   };
   editingCurso: ICurso | null = null;

@@ -127,6 +127,7 @@
       <table>
         <thead>
           <tr>
+            <th>RUT</th>  <!-- Cambiado de "Nombre" a "RUT" -->
             <th>Nombre</th>
             <th>Email</th>
             <th>Acciones</th>
@@ -134,8 +135,9 @@
         </thead>
         <tbody>
           <tr *ngFor="let alumno of alumnos">
+            <td>{{alumno.user.username || 'No registrado'}}</td>  <!-- Removed ?. operator -->
             <td>{{alumno.name}}</td>
-            <td>{{alumno.user.email}}</td>
+            <td>{{alumno.user.email}}</td>  <!-- Removed ?. operator -->
             <td class="actions">
               <button (click)="editAlumno(alumno)">Editar</button>
               <button (click)="deleteAlumnoById(alumno.id)">
