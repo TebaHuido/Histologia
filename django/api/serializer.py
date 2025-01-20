@@ -264,9 +264,31 @@ class LoteSerializer(serializers.ModelSerializer):
         return instance
 
 class NotaSerializer(serializers.ModelSerializer):
+    profesor_nombre = serializers.SerializerMethodField()
+    alumno_nombre = serializers.SerializerMethodField()
+
     class Meta:
         model = Notas
-        fields = ['id', 'titulo', 'cuerpo', 'muestra', 'alumno', 'profesor', 'public']  # Add public field
+        fields = ['id', 'titulo', 'cuerpo', 'muestra', 'alumno', 'profesor', 
+                 'public', 'profesor_nombre', 'alumno_nombre']
+
+    def get_profesor_nombre(self, obj):
+        if obj.profesor:
+            try:
+                profesor = Profesor.objects.get(user=obj.profesor)
+                return profesor.name
+            except Profesor.DoesNotExist:
+                return None
+        return None
+
+    def get_alumno_nombre(self, obj):
+        if obj.alumno:
+            try:
+                alumno = Alumno.objects.get(user=obj.alumno)
+                return alumno.name
+            except Alumno.DoesNotExist:
+                return None
+        return None
 
 class MuestraSerializer2(serializers.ModelSerializer):
     capturas = serializers.SerializerMethodField()
@@ -330,12 +352,15 @@ class TagsSerializer(serializers.ModelSerializer):
 class LabelSerializer(serializers.ModelSerializer):
     is_owner = serializers.SerializerMethodField()
     tag_details = TagsSerializer(source='tag', read_only=True)
+    creator_display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Label
         fields = ['id', 'nota', 'tag', 'tag_details', 'coordenadas', 'captura', 
-                 'created_by', 'creator_name', 'created_at', 'public', 'is_owner']
-        read_only_fields = ['creator_name', 'is_owner', 'created_by', 'tag_details']
+                 'created_by', 'creator_name', 'creator_display_name', 'created_at', 
+                 'public', 'is_owner']
+        read_only_fields = ['creator_name', 'creator_display_name', 'is_owner', 
+                          'created_by', 'tag_details']
 
     def validate_tag(self, value):
         if isinstance(value, (int, str)):
@@ -358,6 +383,19 @@ class LabelSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user'):
             return obj.created_by == request.user
         return False
+
+    def get_creator_display_name(self, obj):
+        if obj.created_by:
+            try:
+                if obj.created_by.is_profesor:
+                    profesor = Profesor.objects.get(user=obj.created_by)
+                    return f"Prof. {profesor.name}"
+                elif obj.created_by.is_alumno:
+                    alumno = Alumno.objects.get(user=obj.created_by)
+                    return alumno.name
+            except (Profesor.DoesNotExist, Alumno.DoesNotExist):
+                pass
+        return obj.creator_name or "Usuario desconocido"
 
 class TagSerializer(serializers.ModelSerializer):
     is_owner = serializers.SerializerMethodField()

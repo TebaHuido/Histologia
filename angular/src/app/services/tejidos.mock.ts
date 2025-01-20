@@ -23,18 +23,19 @@ export interface Tag {
 export interface Label {
     id?: number;
     nota: string;
-    tag: number | Tag | null; // Allow tag to be either number, Tag object, or null
+    tag?: number | Tag | null;  // Updated to include null
     tag_details?: Tag;
     coordenadas: { x: number; y: number };
     captura: number;
     created_by?: number;
     creator_name?: string;
+    creator_display_name?: string;
     created_at?: string;
-    isTemporary?: boolean;
-    highlighted?: boolean;
+    public: boolean;
     is_owner?: boolean;
     visible?: boolean;
-    public?: boolean; // Add public property
+    highlighted?: boolean;
+    isTemporary?: boolean;  // Add this line
 }
 
 export interface Nota {

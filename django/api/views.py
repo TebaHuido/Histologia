@@ -44,6 +44,8 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.decorators import method_decorator
 from rest_framework.views import APIView
 from django.http import JsonResponse
+from rest_framework.exceptions import NotFound, ValidationError  # Add these imports
+from django.core.exceptions import ObjectDoesNotExist  # Add this import
 
 logger = logging.getLogger(__name__)
 
@@ -504,26 +506,28 @@ class GetCSRFToken(APIView):
         origin = request.headers.get('Origin')
         if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
             response["Access-Control-Allow-Origin"] = origin
-        response["Access-Control-Allow-Credentials"] = "true"
-        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken, Authorization"
+            response["Access-Control-Allow-Credentials"] = "true"
+            response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Content-Type, X-CSRFToken, Authorization"
         return response
 
     def get(self, request):
-        response = JsonResponse({'detail': 'CSRF cookie set'})
+        csrf_token = get_token(request)
+        response = JsonResponse({'csrfToken': csrf_token})
         origin = request.headers.get('Origin')
         if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
             response["Access-Control-Allow-Origin"] = origin
-        response["Access-Control-Allow-Credentials"] = "true"
-        response["Access-Control-Expose-Headers"] = "X-CSRFToken"
+            response["Access-Control-Allow-Credentials"] = "true"
+            response["Access-Control-Expose-Headers"] = "X-CSRFToken"
+        
         response.set_cookie(
             'csrftoken',
-            get_token(request),
+            csrf_token,
             samesite='Lax',
             secure=False,
             httponly=False,
-            domain=None,
             path='/',
+            domain='localhost' if 'localhost' in request.get_host() else None,
             max_age=3600
         )
         return response
@@ -783,28 +787,72 @@ class UploadXlsView(APIView):
 class LabelViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = LabelSerializer
-    queryset = Label.objects.all()
 
     def get_queryset(self):
         """
         Filtra las etiquetas por captura y permisos de usuario
         """
+        queryset = Label.objects.all()
         user = self.request.user
-        captura_id = self.request.query_params.get('captura', None)
+        captura_id = self.request.query_params.get('captura')
         
-        # Base queryset
-        queryset = Label.objects.none()
+        # Si estamos haciendo una operación de actualización o eliminación,
+        # no filtramos por captura para permitir encontrar la etiqueta
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return queryset.filter(
+                models.Q(public=True) |
+                models.Q(created_by=user)
+            )
         
-        if captura_id:
-            # Obtiene etiquetas públicas o creadas por el usuario para la captura específica
-            queryset = Label.objects.filter(
-                captura_id=captura_id
-            ).filter(
-                models.Q(public=True) |  # Etiquetas públicas
-                models.Q(created_by=user)  # Etiquetas creadas por el usuario
-            ).distinct()
+        # Para otras operaciones, filtramos por captura
+        if captura_id and captura_id.isdigit():
+            queryset = queryset.filter(captura_id=captura_id)
+        
+        return queryset.filter(
+            models.Q(public=True) |
+            models.Q(created_by=user)
+        ).distinct()
 
-        return queryset
+    def create(self, request, *args, **kwargs):
+        if not request.data.get('captura'):
+            raise ValidationError("Captura ID is required")
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            # Asegurarse de que el usuario es el propietario
+            if instance.created_by != request.user:
+                return Response(
+                    {"error": "No tienes permiso para modificar esta etiqueta"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+                
+            partial = kwargs.pop('partial', False)
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        except Label.DoesNotExist:
+            return Response(
+                {"error": "La etiqueta no existe"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def perform_update(self, serializer):
+        serializer.save()
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        obj = queryset.filter(pk=self.kwargs['pk']).first()
+        if not obj:
+            raise NotFound("No Label matches the given query.")
+        return obj
 
 from rest_framework.parsers import MultiPartParser, FormParser
 

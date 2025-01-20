@@ -190,10 +190,17 @@ export class ApiService {
     );
   }
 
-  createLabel(label: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/labels/`, label, {
-      withCredentials: true
-    }).pipe(
+  createLabel(label: Partial<Label>): Observable<Label> {
+    const headers = this.getAuthHeaders();
+    
+    return this.http.post<Label>(
+      `${this.apiUrl}/labels/`,
+      label,
+      {
+        headers,
+        withCredentials: true
+      }
+    ).pipe(
       catchError(error => {
         console.error('Error creating label:', error);
         return throwError(() => ({
@@ -223,46 +230,42 @@ export class ApiService {
     );
   }
 
-  getLabels(capturaId: number): Observable<Label[]> {
+  getLabels(capturaId: number | undefined): Observable<Label[]> {
+    if (!capturaId || isNaN(Number(capturaId))) {
+      return of([]); // Return empty array if capturaId is invalid
+    }
+    
     return this.http.get<Label[]>(
       `${this.apiUrl}/labels/?captura=${capturaId}`, 
       this.getOptions()
     ).pipe(
       catchError(error => {
         console.error('API Error fetching labels:', error);
-        return of([]);  // Return empty array on error
+        return of([]); // Return empty array on error
       })
     );
   }
 
   updateLabel(id: number, label: Partial<Label>): Observable<Label> {
-    const headers = new HttpHeaders()
-      .set('Content-Type', 'application/json')
-      .set('Authorization', `Bearer ${this.authService.getToken()}`)
-      .set('X-CSRFToken', this.authService.getCSRFToken() || '');
-
-    // Clean up the payload to match backend expectations
-    const payload = {
-      nota: label.nota || '',
-      tag: label.tag !== undefined ? label.tag : null,  // Ensure null is sent when no tag
-      coordenadas: label.coordenadas || { x: 0, y: 0 },
-      public: label.public || false
-    };
-
-    console.log('Sending API request with payload:', payload); // Debug log
-
+    const headers = this.getAuthHeaders();
+    console.log(`Updating label ${id} with data:`, label);
+    
     return this.http.put<Label>(
       `${this.apiUrl}/labels/${id}/`,
-      payload,
+      label,
       {
         headers,
         withCredentials: true
       }
     ).pipe(
       catchError(error => {
-        console.error('API Error:', error);
+        console.error(`Error updating label ${id}:`, error);
+        if (error.status === 404) {
+          console.log('Label not found, attempting to create new one');
+          return this.createLabel(label);
+        }
         return throwError(() => ({
-          error: error.error?.detail || error.error || 'Error al actualizar la etiqueta',
+          error: error.error?.detail || 'Error al actualizar la etiqueta',
           status: error.status
         }));
       })

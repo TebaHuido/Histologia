@@ -7,26 +7,34 @@ import { throwError } from 'rxjs';
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   
-  // Don't intercept auth-related requests
-  if (req.url.includes('/login/') || 
-      req.url.includes('/token/refresh/') || 
-      req.url.includes('/csrf/')) {
+  // Skip CSRF token request
+  if (req.url.includes('/csrf/')) {
     return next(req);
   }
 
+  // Get tokens
   const token = authService.getToken();
   const csrfToken = authService.getCSRFToken();
 
-  // Only set "Content-Type: application/json" if not uploading files
-  let headers = req.headers
-    .set('Authorization', `Bearer ${token || ''}`)
-    .set('X-CSRFToken', csrfToken || '');
+  // Create new headers immutably
+  let headers = req.headers;
   
+  // Add Authorization token if exists
+  if (token) {
+    headers = headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  // Add CSRF token if exists and method is not GET
+  if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    headers = headers.set('X-CSRFToken', csrfToken);
+  }
+
+  // Set Content-Type unless it's FormData
   if (!(req.body instanceof FormData)) {
     headers = headers.set('Content-Type', 'application/json');
   }
 
-  // Clone the request and add auth headers
+  // Clone request with new headers
   const authReq = req.clone({
     headers,
     withCredentials: true
@@ -34,16 +42,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError(error => {
-      if (error.status === 403 && error.error?.code === 'token_not_valid') {
-        return authService.refreshToken().pipe(
+      // Handle CSRF token errors
+      if (error.status === 403 && error.error?.detail?.includes('CSRF')) {
+        return authService.requestCSRFToken().pipe(
           switchMap(() => {
-            // Retry the request with new token
-            const newToken = authService.getToken();
+            // Retry the request with new CSRF token
             const newReq = req.clone({
-              headers: req.headers
-                .set('Authorization', `Bearer ${newToken}`)
-                .set('X-CSRFToken', authService.getCSRFToken() || '')
-                .set('Content-Type', 'application/json'),
+              headers: headers.set('X-CSRFToken', authService.getCSRFToken() || ''),
               withCredentials: true
             });
             return next(newReq);

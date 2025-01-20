@@ -135,7 +135,7 @@
                          [class.readonly]="!label.is_owner">
                       <span class="label-note">{{label.nota || 'Sin descripción'}}</span>
                       <span class="label-creator" *ngIf="!label.is_owner">
-                        por {{label.creator_name}}
+                        por {{label.creator_display_name}}
                       </span>
                       <span class="label-visibility">
                         {{label.public ? '(Público)' : '(Privado)'}}

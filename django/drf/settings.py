@@ -46,10 +46,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # Must be first
-    'api.middleware.CORSMiddleware',  # Add this after corsheaders middleware
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -98,9 +97,9 @@ CORS_ALLOW_METHODS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost",
-    "http://127.0.0.1",
-    "http://192.168.1.91",
+    'http://localhost:4200',
+    'http://localhost:80',
+    'http://localhost'
 ]
 
 CSRF_COOKIE_DOMAIN = None  # Changed from 'localhost'
@@ -111,6 +110,7 @@ CSRF_COOKIE_SAMESITE = None  # Changed from 'Lax'
 CSRF_COOKIE_SECURE = False
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_AGE = 31449600  # 1 year in seconds
 
 # Configuración de autenticación
 AUTHENTICATION_BACKENDS = [

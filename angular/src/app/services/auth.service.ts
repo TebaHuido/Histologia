@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, throwError } from 'rxjs';
 import { tap, switchMap, catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { LoginResponse } from '../interfaces/auth.interface';
+import { LoginResponse, CSRFResponse } from '../interfaces/auth.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -19,23 +19,40 @@ export class AuthService {
     this.baseUrl = `http://${window.location.hostname}/api`;
   }
 
-  requestCSRFToken(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/csrf/`, { withCredentials: true });
+  requestCSRFToken(): Observable<CSRFResponse> {
+    return this.http.get<CSRFResponse>(`${this.baseUrl}/csrf/`, { 
+      withCredentials: true 
+    }).pipe(
+      tap(response => {
+        if (response?.csrfToken) {
+          // Store token in both localStorage and cookie
+          localStorage.setItem('csrfToken', response.csrfToken);
+          document.cookie = `csrftoken=${response.csrfToken}; path=/`;
+        }
+      }),
+      catchError(error => {
+        console.error('Error fetching CSRF token:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   getCSRFToken(): string | null {
-    const storedToken = localStorage.getItem('csrfToken');
-    if (storedToken) {
-      return storedToken;
+    // First try cookie
+    let token = this.getCookie('csrftoken');
+    if (token) {
+      localStorage.setItem('csrfToken', token);
+      return token;
     }
 
-    const cookieValue = this.getCookie('csrftoken');
-    if (cookieValue) {
-      localStorage.setItem('csrfToken', cookieValue);
-      return cookieValue;
+    // Then try localStorage
+    token = localStorage.getItem('csrfToken');
+    if (token) {
+      return token;
     }
 
-    console.warn('No CSRF token found');
+    // If no token found, request a new one
+    this.requestCSRFToken().subscribe();
     return null;
   }
 
@@ -145,7 +162,8 @@ export class AuthService {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) {
-      return parts.pop()?.split(';').shift() || null;
+      const cookieValue = parts.pop()?.split(';').shift();
+      return cookieValue || null;
     }
     return null;
   }

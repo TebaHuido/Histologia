@@ -9,6 +9,8 @@ import { ImagenZoomComponent } from '../imagen-zoom/imagen-zoom.component';
 import { AuthService } from '../services/auth.service';
 import { SharedModule } from '../shared/shared.module'; // Import SharedModule
 import { UpdateMuestraRequest, UpdateMuestraResponse } from '../services/api.service'; // Add these imports
+import { map, catchError } from 'rxjs/operators'; // Add this import
+import { throwError } from 'rxjs'; // Add this import
 
 // Update interfaces for better type safety
 interface BaseNota {
@@ -26,6 +28,8 @@ interface Nota extends BaseNota {
 
 interface NotaResponse extends BaseNota {
   id: number;
+  profesor_nombre?: string;
+  alumno_nombre?: string;
 }
 
 interface Captura {
@@ -91,14 +95,16 @@ export class TejidoComponent implements OnInit {
   constructor(private route: ActivatedRoute, private api: ApiService, public auth: AuthService, private cdr: ChangeDetectorRef) { }
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe(params => {
-      const id = params.get('id');
-      if (id) {
-        this.getTejido(parseInt(id, 10));
-      }
+    // Primero cargar usuarios, luego obtener el tejido
+    this.loadUsers().then(() => {
+      this.route.paramMap.subscribe(params => {
+        const id = params.get('id');
+        if (id) {
+          this.getTejido(parseInt(id, 10));
+        }
+      });
     });
-    this.loadTags(); // Ensure tags are loaded on initialization
-    this.loadUsers(); // Añadir esta llamada
+    this.loadTags();
   }
 
   getTejido(id: number): void {
@@ -168,10 +174,18 @@ export class TejidoComponent implements OnInit {
     }));
   }
 
-  seleccionarImagen(captura: Captura): void {
-    console.log('Captura seleccionada:', captura);  // Para debugging
+  seleccionarImagen(captura: Captura | null): void {
+    // Add null check and type safety
+    if (!captura?.id) {
+      this.imagenSeleccionada = null;
+      this.currentLabels = [];
+      this.initialLabels = [];
+      this.updateGroupedLabels();
+      return;
+    }
+
     this.imagenSeleccionada = captura;
-    this.loadLabels();  // Cargar etiquetas para la captura seleccionada
+    this.loadLabels();
   }
 
   selectCategory(category: string) {
@@ -288,20 +302,31 @@ export class TejidoComponent implements OnInit {
   }
 
   loadLabels(): void {
-    if (this.imagenSeleccionada?.id) {
-      this.api.getLabels(this.imagenSeleccionada.id).subscribe(
-        labels => {
-          this.currentLabels = this.filterLabels(labels).map(label => ({
-            ...label,
-            visible: true
-          }));
-          this.initialLabels = this.currentLabels;
-          this.updateGroupedLabels();
-          this.updateVisibleLabels();
-        },
-        error => console.error('Error loading labels:', error)
-      );
+    if (!this.imagenSeleccionada?.id) {
+      console.warn('No hay captura seleccionada');
+      this.currentLabels = [];
+      this.initialLabels = [];
+      this.updateGroupedLabels();
+      return;
     }
+
+    this.api.getLabels(this.imagenSeleccionada.id).subscribe({
+      next: (labels) => {
+        this.currentLabels = this.filterLabels(labels).map(label => ({
+          ...label,
+          visible: true
+        }));
+        this.initialLabels = this.currentLabels;
+        this.updateGroupedLabels();
+        this.updateVisibleLabels();
+      },
+      error: (error) => {
+        console.error('Error loading labels:', error);
+        this.currentLabels = [];
+        this.initialLabels = [];
+        this.updateGroupedLabels();
+      }
+    });
   }
 
   toggleLabelVisibility(label: Label): void {
@@ -339,7 +364,7 @@ export class TejidoComponent implements OnInit {
     return tagObject ? tagObject.public : false;
   }
 
-  private isTagObject(tag: number | Tag | null): tag is Tag {
+  private isTagObject(tag: number | Tag | null | undefined): tag is Tag {
     return typeof tag === 'object' && tag !== null && 'public' in tag;
   }
 
@@ -422,78 +447,97 @@ export class TejidoComponent implements OnInit {
 
   startEditingLabel(label: Label) {
     if (!label.is_owner) return;
-    
-    // Ensure tags are loaded before setting up editing state
-    if (!this.availableTags.length) {
-      this.loadTags();
-    }
 
+    // No verificar la existencia de la etiqueta aquí, ya la tenemos
     this.editingLabelId = label.id || null;
     this.newLabel = {
       ...label,
-      // Safely handle tag access
       tag: label.tag ? 
         (typeof label.tag === 'object' ? label.tag?.id : label.tag) 
         : null,
       public: label.public || false,
       nota: label.nota || '',
-      coordenadas: label.coordenadas
+      coordenadas: label.coordenadas,
+      captura: label.captura
     };
-    console.log('Started editing label:', this.newLabel);
   }
 
   saveLabel() {
-    const user = this.auth.getUser();
-    if (!this.editingLabelId) {
-      console.warn('Missing required data for label update');
+    if (!this.imagenSeleccionada?.id) {
+      console.warn('No hay captura seleccionada');
       return;
     }
 
-    const isPublic = user.is_alumno ? false : !!this.newLabel.public;
-
-    // Ensure tag is properly handled
-    const updateData: Partial<Label> = {
-      nota: this.newLabel.nota || '',
-      public: isPublic,
-      coordenadas: this.newLabel.coordenadas,
-      tag: this.newLabel.tag !== undefined && this.newLabel.tag !== null ? 
-           Number(this.newLabel.tag) : 
-           null
+    const user = this.auth.getUser();
+    const labelData: Partial<Label> = {
+      nota: this.newLabel?.nota || '',
+      public: user?.is_alumno ? false : !!this.newLabel?.public,
+      coordenadas: this.newLabel?.coordenadas,
+      tag: this.newLabel?.tag !== undefined ? 
+           (this.newLabel.tag === null ? null : Number(this.newLabel.tag)) : 
+           null,
+      captura: this.imagenSeleccionada.id
     };
 
-    console.log('Sending update data:', updateData); // Debug log
+    console.log('Sending label data:', labelData);
 
-    this.api.updateLabel(this.editingLabelId, updateData).subscribe({
-      next: (updatedLabel) => {
-        console.log('Successfully updated label:', updatedLabel);
-        // Actualizar la etiqueta en la lista
-        this.currentLabels = this.currentLabels.map(label => {
-          if (label.id === this.editingLabelId) {
-            return {
-              ...label,
-              ...updatedLabel,
-              visible: true,
-              is_owner: true,
-              public: updatedLabel.public,
-              // Actualizar el tag con los detalles completos
-              tag: this.availableTags.find(t => t.id === updatedLabel.tag) || updatedLabel.tag
-            };
-          }
-          return label;
-        });
+    if (this.editingLabelId) {
+      console.log(`Updating existing label ${this.editingLabelId}`);
+      this.api.updateLabel(this.editingLabelId, labelData).subscribe({
+        next: (savedLabel: Label) => {
+          console.log('Label updated successfully:', savedLabel);
+          this.handleLabelUpdateSuccess(savedLabel);
+        },
+        error: (error: any) => {
+          console.error('Error updating label:', error);
+          this.errorMessage = error.error?.detail || 'Error al actualizar la etiqueta';
+        }
+      });
+    } else {
+      console.log('Creating new label');
+      this.api.createLabel(labelData).subscribe({
+        next: (savedLabel: Label) => {
+          console.log('Label created successfully:', savedLabel);
+          this.handleLabelUpdateSuccess(savedLabel);
+        },
+        error: (error: any) => {
+          console.error('Error creating label:', error);
+          this.errorMessage = error.error?.detail || 'Error al crear la etiqueta';
+        }
+      });
+    }
+  }
 
-        // Actualizar grupos y etiquetas visibles
-        this.editingLabelId = null;
-        this.newLabel = { public: false };
-        this.updateGroupedLabels();
-        this.updateVisibleLabels();
-        this.errorMessage = '';
-      },
-      error: (error) => {
-        console.error('Error updating label:', error);
-        this.errorMessage = error.error?.detail || error.error || 'Error al actualizar la etiqueta';
-      }
-    });
+  private handleLabelUpdateSuccess(label: Label) {
+    if (!this.imagenSeleccionada?.id) {
+      console.warn('No hay captura seleccionada');
+      return;
+    }
+
+    // Si tenemos un ID de edición, actualizar la etiqueta existente
+    if (this.editingLabelId) {
+      this.currentLabels = this.currentLabels.map(l => 
+        l.id === this.editingLabelId ? { ...l, ...label, visible: true } : l
+      );
+    } else {
+      // Si no, agregar la nueva etiqueta
+      this.currentLabels = [...this.currentLabels, { ...label, visible: true }];
+    }
+
+    // Limpiar el estado de edición
+    this.editingLabelId = null;
+    this.newLabel = { public: false };
+    
+    // Actualizar la UI
+    this.updateGroupedLabels();
+    this.updateVisibleLabels();
+    this.errorMessage = '';
+    
+    // Recargar las etiquetas para asegurar sincronización
+    this.loadLabels();
+    
+    // Asegurar que los cambios se detecten
+    this.cdr.detectChanges();
   }
 
   cancelEditing() {
@@ -675,22 +719,44 @@ export class TejidoComponent implements OnInit {
 
   getNotaAuthor(nota: NotaResponse): string {
     if (nota.profesor) {
-      return 'Prof. ' + this.profesores.find(p => p.id === nota.profesor)?.nombre || 'Desconocido';
+      // Usar el nombre del profesor directamente del objeto nota
+      return nota.profesor_nombre ? `Prof. ${nota.profesor_nombre}` : 'Profesor no encontrado';
     } else if (nota.alumno) {
-      return this.alumnos.find(a => a.id === nota.alumno)?.nombre || 'Desconocido';
+      // Usar el nombre del alumno directamente del objeto nota
+      return nota.alumno_nombre || 'Alumno no encontrado';
     }
-    return 'Desconocido';
+    return 'Autor desconocido';
   }
 
-  loadUsers(): void {
-    this.api.getProfesores().subscribe(
-      (profesores: Profesor[]) => this.profesores = profesores,
-      (error: any) => console.error('Error cargando profesores:', error)
-    );
-    this.api.getAlumnos().subscribe(
-      (alumnos: Alumno[]) => this.alumnos = alumnos,
-      (error: any) => console.error('Error cargando alumnos:', error)
-    );
+  loadUsers(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      Promise.all([
+        new Promise<void>((resolveProf) => {
+          this.api.getProfesores().subscribe({
+            next: (profesores: Profesor[]) => {
+              this.profesores = profesores;
+              resolveProf();
+            },
+            error: (error) => {
+              console.error('Error cargando profesores:', error);
+              resolveProf(); // Resolver incluso con error para no bloquear
+            }
+          });
+        }),
+        new Promise<void>((resolveAlum) => {
+          this.api.getAlumnos().subscribe({
+            next: (alumnos: Alumno[]) => {
+              this.alumnos = alumnos;
+              resolveAlum();
+            },
+            error: (error) => {
+              console.error('Error cargando alumnos:', error);
+              resolveAlum(); // Resolver incluso con error para no bloquear
+            }
+          });
+        })
+      ]).then(() => resolve());
+    });
   }
 
   startEditingMuestra(): void {

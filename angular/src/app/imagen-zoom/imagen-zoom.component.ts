@@ -146,7 +146,7 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
     return tagObject ? tagObject.public : false;
   }
 
-  private isTagObject(tag: number | Tag | null): tag is Tag {
+  private isTagObject(tag: number | Tag | null | undefined): tag is Tag {
     return typeof tag === 'object' && tag !== null && 'public' in tag;
   }
 
@@ -465,5 +465,16 @@ export class ImagenZoomComponent implements OnInit, AfterViewInit {
       highlighted: false
     }));
     this.cdr.detectChanges();
+  }
+
+  createTemporaryLabel(coordinates: { x: number, y: number }): Label {
+    return {
+      nota: '',
+      coordenadas: coordinates,
+      captura: this.capturaId || 0,
+      public: false,
+      isTemporary: true,
+      tag: null
+    };
   }
 }

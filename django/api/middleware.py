@@ -4,21 +4,34 @@ from django.utils.decorators import decorator_from_middleware
 from django.contrib.auth import get_user_model
 from django.conf import settings
 import jwt
+from django.http import JsonResponse
 
 class CORSMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        response = self.get_response(request)
-        response["Access-Control-Allow-Origin"] = "*"
-        response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        response["Access-Control-Allow-Headers"] = "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRFToken"
-        response["Access-Control-Allow-Credentials"] = "true"
-        response["Access-Control-Expose-Headers"] = "Content-Type, X-CSRFToken"
-        
+        # Process the request first
         if request.method == "OPTIONS":
+            response = JsonResponse({'message': 'OK'})
             response.status_code = 200
+        else:
+            response = self.get_response(request)
+
+        # Get the origin and handle CORS headers
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:80", "http://localhost:4200", "http://localhost"]:
+            response["Access-Control-Allow-Origin"] = origin
+            response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response["Access-Control-Allow-Headers"] = "Content-Type, X-Requested-With, Accept, Authorization, X-CSRFToken"
+            response["Access-Control-Allow-Credentials"] = "true"
+            response["Access-Control-Expose-Headers"] = "X-CSRFToken"
+
+            # Add CSRF token to response if it exists
+            csrf_token = request.META.get('CSRF_COOKIE')
+            if csrf_token:
+                response["X-CSRFToken"] = csrf_token
+
         return response
 
 class AuthenticationMiddleware(MiddlewareMixin):
