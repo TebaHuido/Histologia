@@ -592,49 +592,6 @@ class ProfesorCreateView(generics.CreateAPIView):
     queryset = Profesor.objects.all()
     serializer_class = ProfesorCreateSerializer
 
-class UplimageView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-
-    def post(self, request, *args, **kwargs):
-        try:
-            # Extract data from request
-            data = {
-                'name': request.data.get('name'),
-                'images': request.FILES.getlist('images'),
-                'categoria_ids': json.loads(request.data.get('categoria', '[]')),
-                'organo_ids': json.loads(request.data.get('organo', '[]')),
-                'tincion_ids': json.loads(request.data.get('tincion', '[]'))
-            }
-
-            # Create serializer and validate
-            serializer = UplImageMuestraSerializer(data=data)
-            if not serializer.is_valid():
-                return Response(
-                    {'error': serializer.errors}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Save the muestra
-            muestra = serializer.save()
-            
-            # Return success response with muestra data
-            response_data = {
-                'id': muestra.id,
-                'name': muestra.name,
-                'message': 'Muestra creada exitosamente',
-                'capturas': CapturaSerializer(muestra.captura_set.all(), many=True).data
-            }
-            
-            return Response(response_data, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            logger.error(f"Error in UplimageView: {str(e)}")
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class CursoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsProfesorOrReadOnly]
@@ -864,46 +821,97 @@ class UplImageViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         try:
-            # Extract data from request
+            print("Raw request data:", request.data)
+
+            # Initialize data
             data = {
                 'name': request.data.get('name'),
                 'images': request.FILES.getlist('images'),
-                'categoria_ids': json.loads(request.data.get('categoria', '[]')),
-                'organo_ids': json.loads(request.data.get('organo', '[]')),
-                'tincion_ids': json.loads(request.data.get('tincion', '[]'))
+                'categoria_ids': [],
+                'organo_ids': [],
+                'tincion_ids': []
             }
-
-            # Debug print
-            print("Received data:", data)
-
-            # Create serializer with clean data
-            serializer = self.get_serializer(data=data)
-            if not serializer.is_valid():
-                print("Serializer errors:", serializer.errors)
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            # Create the muestra with clean relationships
-            instance = serializer.save()
             
-            # Return only specific data we want to expose
+            # Create and handle new category
+            if 'new_category' in request.data:
+                categoria = Categoria.objects.create(name=request.data['new_category'])
+                data['categoria_ids'].append(categoria.id)
+            elif 'categoria_ids' in request.data:
+                try:
+                    data['categoria_ids'] = json.loads(request.data.get('categoria_ids'))
+                except json.JSONDecodeError:
+                    pass
+
+            # Create and handle new organo and sistema
+            if 'new_organo' in request.data:
+                organo = Organo.objects.create(name=request.data['new_organo'])
+                if 'new_sistema' in request.data:
+                    sistema = Sistema.objects.create(name=request.data['new_sistema'])
+                    organo.sistema.add(sistema)
+                data['organo_ids'].append(organo.id)
+            elif 'organo_ids' in request.data:
+                try:
+                    data['organo_ids'] = json.loads(request.data.get('organo_ids'))
+                except json.JSONDecodeError:
+                    pass
+
+            # Create and handle new tincion
+            if 'new_tincion' in request.data:
+                tincion = Tincion.objects.create(
+                    name=request.data['new_tincion'],
+                    descripcion="Descripción pendiente"
+                )
+                data['tincion_ids'].append(tincion.id)
+            elif 'tincion_ids' in request.data:
+                try:
+                    data['tincion_ids'] = json.loads(request.data.get('tincion_ids'))
+                except json.JSONDecodeError:
+                    pass
+
+            print("Processed data:", data)
+
+            # Create muestra
+            muestra = Muestra.objects.create(name=data['name'])
+
+            # Create capturas
+            for idx, image in enumerate(data['images'], 1):
+                Captura.objects.create(
+                    muestra=muestra,
+                    image=image,
+                    name=f"Captura {idx}"
+                )
+
+            # Set relationships
+            if data['categoria_ids']:
+                muestra.Categoria.set(data['categoria_ids'])
+            if data['organo_ids']:
+                muestra.organo.set(data['organo_ids'])
+            if data['tincion_ids']:
+                muestra.tincion.set(data['tincion_ids'])
+
+            # Refresh to ensure we have latest data
+            muestra.refresh_from_db()
+
             response_data = {
-                'id': instance.id,
-                'name': instance.name,
-                'capturas': CapturaSerializer(instance.captura_set.all(), many=True).data
+                'id': muestra.id,
+                'name': muestra.name,
+                'message': 'Muestra creada exitosamente',
+                'Categoria': [{'id': c.id, 'name': c.name} for c in muestra.Categoria.all()],
+                'organo': [{'id': o.id, 'name': o.name} for o in muestra.organo.all()],
+                'tincion': [{'id': t.id, 'name': t.name} for t in muestra.tincion.all()],
+                'sistemas': [
+                    {'sistema': s.name, 'organo': o.name}
+                    for o in muestra.organo.all()
+                    for s in o.sistema.all()
+                ],
+                'capturas': CapturaSerializer(muestra.captura_set.all(), many=True).data
             }
-            
+
             return Response(response_data, status=status.HTTP_201_CREATED)
 
-        except json.JSONDecodeError as e:
-            return Response(
-                {'error': f'Invalid JSON format: {str(e)}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            print(f"Error in create: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def get_queryset(self):
         return Muestra.objects.all()

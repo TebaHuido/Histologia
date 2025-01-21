@@ -419,76 +419,90 @@ class CursoSerializer(serializers.ModelSerializer):
 
 class UplImageMuestraSerializer(serializers.ModelSerializer):
     images = serializers.ListField(
-        child=serializers.FileField(
-            max_length=100000,
-            allow_empty_file=False,
-            use_url=False
-        ),
+        child=serializers.FileField(),
         write_only=True,
         required=True
     )
     categoria_ids = serializers.ListField(
         child=serializers.IntegerField(),
-        write_only=True
+        required=False,
+        write_only=True,
+        allow_empty=True
     )
     organo_ids = serializers.ListField(
         child=serializers.IntegerField(),
-        write_only=True
+        required=False,
+        write_only=True,
+        allow_empty=True
     )
     tincion_ids = serializers.ListField(
         child=serializers.IntegerField(),
-        write_only=True
+        required=False,
+        write_only=True,
+        allow_empty=True
     )
-    capturas = CapturaSerializer(many=True, read_only=True)
 
     class Meta:
         model = Muestra
-        fields = ['id', 'name', 'categoria_ids', 'organo_ids', 'tincion_ids', 'images', 'capturas']
+        fields = ['id', 'name', 'images', 'categoria_ids', 'organo_ids', 'tincion_ids']
+
+    def create(self, validated_data):
+        print("Creating muestra with data:", validated_data)
+        
+        # Extract relationship data
+        images = validated_data.pop('images', [])
+        categoria_ids = validated_data.pop('categoria_ids', [])
+        organo_ids = validated_data.pop('organo_ids', [])
+        tincion_ids = validated_data.pop('tincion_ids', [])
+
+        # Create base muestra
+        muestra = Muestra.objects.create(
+            name=validated_data.get('name')
+        )
+
+        # Create capturas
+        for idx, image in enumerate(images, 1):
+            Captura.objects.create(
+                muestra=muestra,
+                image=image,
+                name=f"Captura {idx}"
+            )
+
+        # Set relationships if IDs are provided
+        if categoria_ids:
+            muestra.Categoria.set(categoria_ids)
+        if organo_ids:
+            muestra.organo.set(organo_ids)
+        if tincion_ids:
+            muestra.tincion.set(tincion_ids)
+
+        print("Created muestra:", {
+            'id': muestra.id,
+            'name': muestra.name,
+            'categorias': list(muestra.Categoria.all()),
+            'organos': list(muestra.organo.all()),
+            'tinciones': list(muestra.tincion.all())
+        })
+
+        return muestra
 
     def to_representation(self, instance):
         """
-        Override to_representation to ensure we only return specific fields
-        and no unexpected relationships
+        Custom representation of the muestra for API responses
         """
-        ret = super().to_representation(instance)
-        # Only include specific fields we want to return
-        ret = {
+        return {
             'id': instance.id,
             'name': instance.name,
-            'capturas': ret['capturas']
+            'capturas': CapturaSerializer(instance.captura_set.all(), many=True).data,
+            'details': {
+                'categorias': [c.name for c in instance.Categoria.all()],
+                'organos': [o.name for o in instance.organo.all()],
+                'sistemas': [f"{s.name} - {o.name}" 
+                           for o in instance.organo.all() 
+                           for s in o.sistema.all()],
+                'tinciones': [t.name for t in instance.tincion.all()]
+            }
         }
-        return ret
-
-    def create(self, validated_data):
-        try:
-            images = validated_data.pop('images', [])
-            categoria_ids = validated_data.pop('categoria_ids', [])
-            organo_ids = validated_data.pop('organo_ids', [])
-            tincion_ids = validated_data.pop('tincion_ids', [])
-
-            # Create fresh muestra with no previous relationships
-            muestra = Muestra.objects.create(name=validated_data['name'])
-            
-            # Set only the relationships we want
-            if categoria_ids:
-                muestra.Categoria.set(Categoria.objects.filter(id__in=categoria_ids))
-            if organo_ids:
-                muestra.organo.set(Organo.objects.filter(id__in=organo_ids))
-            if tincion_ids:
-                muestra.tincion.set(Tincion.objects.filter(id__in=tincion_ids))
-
-            # Create captures with clean names
-            for i, image in enumerate(images, 1):
-                Captura.objects.create(
-                    image=image,
-                    muestra=muestra,
-                    name=f"Captura {i}"
-                )
-
-            return muestra
-        except Exception as e:
-            print(f"Error in create: {str(e)}")
-            raise
 
 class AlumnoSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)  # Usamos el UserSerializer completo

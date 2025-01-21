@@ -124,23 +124,62 @@ export class UplimageComponent implements OnInit {
     const formData = new FormData();
     formData.append('name', this.sampleForm.get('name')?.value);
   
-    // Categorías
-    const selectedCategory = this.sampleForm.get('category')?.value;
-    formData.append('categoria', JSON.stringify([selectedCategory]));
+    // Handle category creation/selection
+    if (this.isCreatingNewCategory) {
+      const newCategoryValue = this.sampleForm.get('newCategory')?.value;
+      if (newCategoryValue) {
+        formData.append('new_category', newCategoryValue);
+      }
+    } else {
+      const categoryValue = this.sampleForm.get('category')?.value;
+      formData.append('categoria_ids', JSON.stringify([parseInt(categoryValue)]));
+    }
+
+    // Handle organ and system creation/selection
+    if (this.isCreatingNewOrgano) {
+      const newOrganoValue = this.sampleForm.get('newOrgano')?.value;
+      if (newOrganoValue) {
+        formData.append('new_organo', newOrganoValue);
+        
+        if (this.isCreatingNewSistema) {
+          const newSistemaValue = this.sampleForm.get('newSistema')?.value;
+          if (newSistemaValue) {
+            formData.append('new_sistema', newSistemaValue);
+          }
+        } else {
+          const sistemaValue = this.sampleForm.get('sistema')?.value;
+          if (sistemaValue) {
+            formData.append('sistema_ids', JSON.stringify([parseInt(sistemaValue)]));
+          }
+        }
+      }
+    } else {
+      const organoValue = this.sampleForm.get('organo')?.value;
+      formData.append('organo_ids', JSON.stringify([parseInt(organoValue)]));
+    }
+
+    // Handle tincion creation/selection
+    if (this.isCreatingNewTincion) {
+      const newTincionValue = this.sampleForm.get('newTincion')?.value;
+      if (newTincionValue) {
+        formData.append('new_tincion', newTincionValue);
+      }
+    } else {
+      const tincionValue = this.sampleForm.get('tincion')?.value;
+      formData.append('tincion_ids', JSON.stringify([parseInt(tincionValue)]));
+    }
   
-    // Órganos
-    const selectedOrgano = this.sampleForm.get('organo')?.value;
-    formData.append('organo', JSON.stringify([selectedOrgano]));
-  
-    // Tinciones
-    const selectedTincion = this.sampleForm.get('tincion')?.value;
-    formData.append('tincion', JSON.stringify([selectedTincion]));
-  
-    // Imágenes
+    // Add images
     this.selectedFiles.forEach((file) => {
       formData.append('images', file, file.name);
     });
-  
+
+    // Debug log
+    console.log('Sending form data:');
+    formData.forEach((value, key) => {
+      console.log(`${key}: ${value}`);
+    });
+
     // Enviar solicitud al servidor
     this.http.post('http://localhost:8000/api/uplimage/', formData, { 
       withCredentials: true 
@@ -160,11 +199,20 @@ export class UplimageComponent implements OnInit {
     ).subscribe({
       next: (response: any) => {
         console.log('Muestra creada exitosamente:', response);
-        // Check if we got a success response with muestra data
         if (response.id && response.name) {
           this.resetForm();
-          // Optionally show success message to user
-          alert('Muestra creada exitosamente');
+          // Show comprehensive success message
+          const details = response.details;
+          const message = `
+            Muestra creada exitosamente:
+            - Nombre: ${response.name}
+            - Categorías: ${details.categorias.join(', ')}
+            - Órganos: ${details.organos.join(', ')}
+            - Sistemas: ${details.sistemas.join(', ')}
+            - Tinciones: ${details.tinciones.join(', ')}
+            - Número de capturas: ${response.capturas.length}
+          `;
+          alert(message);
         } else {
           console.warn('Respuesta inesperada:', response);
         }
